@@ -9,7 +9,7 @@
   - **Bootstrap Utility Classes**: Use only standard bootstrap 5+ utility classes for layout, spacing, and colors. Avoid creating custom CSS classes or inline styles unless the design cannot be achieved without them
 
 ## Accessibility
-  -**Standards**: All user interfaces must meet WCAG 2.1+ accessibility standards
+  - **Standards**: All user interfaces must meet WCAG 2.1+ accessibility standards
   - **Alt tags**: All images must also have an alt tag attribute that describes the image
   - **Priority**: Prioritize accessibility over design
   - **ARIA Labels**: Include aria labels on ALL HTML form controls
