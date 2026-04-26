@@ -1,0 +1,23 @@
+{
+  "name": "jcrumb-resume-builder",
+  "version": "1.0.0",
+  "description": "Desktop resume builder built with Electron, Express, SQLite, Bootstrap, and vanilla JavaScript.",
+  "main": "main.js",
+  "author": "Jacob Crumb",
+  "license": "ISC",
+  "type": "commonjs",
+  "scripts": {
+    "postinstall": "node scripts/postinstall.js",
+    "start": "electron .",
+    "dev": "electron . --dev"
+  },
+  "dependencies": {
+    "bootstrap": "^5.3.8",
+    "dotenv": "^17.2.3",
+    "electron": "^38.7.0",
+    "express": "^5.1.0",
+    "sqlite3": "^5.1.7",
+    "sweetalert2": "^11.23.0",
+    "uuid": "^13.0.0"
+  }
+}
