@@ -3,9 +3,261 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Home</title>
+    <title>Resume Builder</title>
+    <link rel="stylesheet" href="css/lib/bootstrap.min.css">
 </head>
-<body>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">Resume Builder</span>
+            <button
+                class="navbar-toggler"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#divNavbarContent"
+                aria-controls="divNavbarContent"
+                aria-expanded="false"
+                aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="divNavbarContent">
+                <div class="navbar-nav ms-auto gap-2 py-2 py-lg-0">
+                    <button class="btn btn-outline-light" type="button" id="btnNavDashboard" aria-label="Open Dashboard">Dashboard</button>
+                    <button class="btn btn-outline-light" type="button" id="btnNavJobs" aria-label="Open Jobs">Jobs</button>
+                    <button class="btn btn-outline-light" type="button" id="btnNavSkills" aria-label="Open Skills">Skills</button>
+                    <button class="btn btn-outline-light" type="button" id="btnNavAwards" aria-label="Open Awards">Awards</button>
+                    <button class="btn btn-outline-light" type="button" id="btnNavCertifications" aria-label="Open Certifications">Certifications</button>
+                    <button class="btn btn-warning" type="button" id="btnNavResumeBuilder" aria-label="Open Resume Builder">Resume Builder</button>
+                </div>
+            </div>
+        </div>
+    </nav>
 
+    <main class="container py-4">
+        <div id="divDashboard">
+            <div class="row g-4">
+                <div class="col-12">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body">
+                            <h1 class="h3 mb-2">Build your resume step by step</h1>
+                            <p class="text-muted mb-0">Track your experience, curate your highlights, and assemble a polished resume preview for AI review.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-xl-3">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-body">
+                            <h2 class="h5">Jobs</h2>
+                            <p class="display-6 mb-0" id="pJobCount">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-xl-3">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-body">
+                            <h2 class="h5">Skills</h2>
+                            <p class="display-6 mb-0" id="pSkillCount">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-xl-3">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-body">
+                            <h2 class="h5">Awards</h2>
+                            <p class="display-6 mb-0" id="pAwardCount">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-xl-3">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-body">
+                            <h2 class="h5">Certifications</h2>
+                            <p class="display-6 mb-0" id="pCertCount">0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="divJobs" class="d-none">
+            <div class="row g-4">
+                <div class="col-12">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h2 class="h4 mb-0">Jobs</h2>
+                                <button class="btn btn-secondary d-none" type="button" id="btnCancelEditJob" aria-label="Cancel editing job">Cancel Edit</button>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted" for="txtRoleName">Role Name</label>
+                                    <input class="form-control" id="txtRoleName" type="text" placeholder="Senior Analyst" aria-label="Role Name">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted" for="txtCompanyName">Company Name</label>
+                                    <input class="form-control" id="txtCompanyName" type="text" placeholder="Company Name" aria-label="Company Name">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted" for="txtStartDate">Start Date</label>
+                                    <input class="form-control" id="txtStartDate" type="date" aria-label="Start Date">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted" for="txtEndDate">End Date</label>
+                                    <input class="form-control" id="txtEndDate" type="date" aria-label="End Date">
+                                </div>
+                                <div class="col-12">
+                                    <button class="btn btn-primary" type="button" id="btnSaveJob" aria-label="Save Job">Save Job</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div id="divJobsList"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="divSkills" class="d-none">
+            <div class="row g-4">
+                <div class="col-12">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h2 class="h4 mb-0">Skills</h2>
+                                <button class="btn btn-secondary d-none" type="button" id="btnCancelEditSkill" aria-label="Cancel editing skill">Cancel Edit</button>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted" for="txtSkillName">Skill Name</label>
+                                    <input class="form-control" id="txtSkillName" type="text" placeholder="Project Management" aria-label="Skill Name">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted" for="txtProficiencyLevel">Proficiency Level</label>
+                                    <input class="form-control" id="txtProficiencyLevel" type="text" placeholder="Advanced" aria-label="Proficiency Level">
+                                </div>
+                                <div class="col-12">
+                                    <button class="btn btn-primary" type="button" id="btnSaveSkill" aria-label="Save Skill">Save Skill</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div id="divSkillsList"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="divAwards" class="d-none">
+            <div class="row g-4">
+                <div class="col-12">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h2 class="h4 mb-0">Awards</h2>
+                                <button class="btn btn-secondary d-none" type="button" id="btnCancelEditAward" aria-label="Cancel editing award">Cancel Edit</button>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted" for="txtAwardName">Award Name</label>
+                                    <input class="form-control" id="txtAwardName" type="text" placeholder="Top Performer" aria-label="Award Name">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted" for="txtAwardDate">Award Date</label>
+                                    <input class="form-control" id="txtAwardDate" type="date" aria-label="Award Date">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label text-muted" for="txtAwardDescription">Description</label>
+                                    <textarea class="form-control" id="txtAwardDescription" rows="3" placeholder="Describe the award and why it matters" aria-label="Award Description"></textarea>
+                                </div>
+                                <div class="col-12">
+                                    <button class="btn btn-primary" type="button" id="btnSaveAward" aria-label="Save Award">Save Award</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div id="divAwardsList"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="divCertifications" class="d-none">
+            <div class="row g-4">
+                <div class="col-12">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h2 class="h4 mb-0">Certifications</h2>
+                                <button class="btn btn-secondary d-none" type="button" id="btnCancelEditCertification" aria-label="Cancel editing certification">Cancel Edit</button>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted" for="txtCertificationName">Certification Name</label>
+                                    <input class="form-control" id="txtCertificationName" type="text" placeholder="PMP" aria-label="Certification Name">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted" for="txtIssuingOrganization">Issuing Organization</label>
+                                    <input class="form-control" id="txtIssuingOrganization" type="text" placeholder="PMI" aria-label="Issuing Organization">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted" for="txtDateEarned">Date Earned</label>
+                                    <input class="form-control" id="txtDateEarned" type="date" aria-label="Date Earned">
+                                </div>
+                                <div class="col-12">
+                                    <button class="btn btn-primary" type="button" id="btnSaveCertification" aria-label="Save Certification">Save Certification</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div id="divCertificationsList"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="divResumeBuilder" class="d-none">
+            <div class="row g-4">
+                <div class="col-12">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body">
+                            <h2 class="h4 mb-3">Resume Builder</h2>
+                            <p class="text-muted">Choose the content you want to include in your resume preview, then request AI feedback once the preview looks right.</p>
+                            <div id="divResumeSelections"></div>
+                            <div class="mt-3">
+                                <button class="btn btn-primary" type="button" id="btnPreviewResume" aria-label="Preview Resume">Preview Resume</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="card shadow-sm border-0 d-none" id="divResumePreview">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h3 class="h4 mb-0">Resume Preview</h3>
+                                <button class="btn btn-success" type="button" id="btnGetFeedback" aria-label="Get AI Feedback">Get AI Feedback</button>
+                            </div>
+                            <div id="divPreviewContent"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="card shadow-sm border-0 d-none" id="divGeminiFeedback">
+                        <div class="card-body">
+                            <h3 class="h4 mb-3">Gemini Feedback</h3>
+                            <div id="divFeedbackContent"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/lib/bootstrap.bundle.min.js"></script>
+    <script src="js/lib/sweetalert2@11.min.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>
