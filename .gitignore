@@ -1,0 +1,4 @@
+node_modules/
+.env
+resume.db
+npm-debug.log*
