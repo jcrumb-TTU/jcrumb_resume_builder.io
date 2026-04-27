@@ -73,6 +73,32 @@ const objDatabaseReadyPromise = new Promise((resolve, reject) => {
                     strCertificationName TEXT NOT NULL,
                     strIssuingOrganization TEXT NOT NULL,
                     strDateEarned TEXT
+                )`)
+
+                // tblProfile stores a single record for the user's personal
+                // contact information.  There is no DELETE route for profile —
+                // it is only ever created once and then updated in place.
+                dbResume.run(`CREATE TABLE IF NOT EXISTS tblProfile (
+                    strProfileID TEXT PRIMARY KEY,
+                    strFullName TEXT NOT NULL,
+                    strPhone TEXT,
+                    strEmail TEXT,
+                    strLinkedIn TEXT,
+                    strGitHub TEXT,
+                    strWebsite TEXT
+                )`)
+
+                // tblEducation stores one row per academic credential.
+                // tblEducation is the LAST table created inside serialize() so
+                // its callback is responsible for resolving the database-ready
+                // promise and unblocking the server startup sequence.
+                dbResume.run(`CREATE TABLE IF NOT EXISTS tblEducation (
+                    strEducationID TEXT PRIMARY KEY,
+                    strInstitutionName TEXT NOT NULL,
+                    strDegree TEXT NOT NULL,
+                    strFieldOfStudy TEXT,
+                    strStartDate TEXT,
+                    strEndDate TEXT
                 )`, [], function(objTableError){
                     if(objTableError){
                         reject(objTableError)
@@ -628,6 +654,220 @@ app.delete('/api/certifications/:certificationid', (req, res) => {
                 res.status(500).json({outcome: "error", message: err.message})
             } else {
                 res.status(200).json({outcome: "success", message: `Certification deleted with id ${strCertificationID}`})
+            }
+        })
+    } else {
+        res.status(400).json({errorMessage: strMessage})
+    }
+})
+
+// ============================================================
+// SECTION: Profile Routes
+// ============================================================
+
+// GET /api/profile
+// Returns a JSON array containing the single profile record, or an empty
+// array if no profile has been created yet.  The frontend uses the array
+// length to decide whether to call POST (create) or PUT (update).
+app.get('/api/profile', (req, res) => {
+    const strQuery = "SELECT * FROM tblProfile"
+    dbResume.all(strQuery, [], function(err, rows){
+        if(err){
+            res.status(500).json({outcome: "error", message: err.message})
+        } else {
+            res.status(200).json(rows)
+        }
+    })
+})
+
+// POST /api/profile
+// Creates the user's profile record.  strFullName is required;
+// all other fields are optional.
+app.post('/api/profile', (req, res) => {
+    let strFullName = getTrimmedString(req.body.strFullName)
+    let strPhone = getTrimmedString(req.body.strPhone)
+    let strEmail = getTrimmedString(req.body.strEmail)
+    let strLinkedIn = getTrimmedString(req.body.strLinkedIn)
+    let strGitHub = getTrimmedString(req.body.strGitHub)
+    let strWebsite = getTrimmedString(req.body.strWebsite)
+
+    let blnError = false
+    let strMessage = ''
+
+    if(strFullName.length < 1){
+        blnError = true
+        strMessage += 'You must provide your full name. '
+    }
+
+    if(blnError == false){
+        const strProfileID = uuidv4()
+        const strQuery = "INSERT INTO tblProfile VALUES (?,?,?,?,?,?,?)"
+        dbResume.run(strQuery, [strProfileID, strFullName, strPhone, strEmail, strLinkedIn, strGitHub, strWebsite], function(err){
+            if(err){
+                res.status(500).json({outcome: "error", message: err.message})
+            } else {
+                res.status(201).json({outcome: "success", message: `Profile created with id ${strProfileID}`})
+            }
+        })
+    } else {
+        res.status(400).json({errorMessage: strMessage.trim()})
+    }
+})
+
+// PUT /api/profile
+// Updates the user's existing profile record.  Both strProfileID and
+// strFullName are required.
+app.put('/api/profile', (req, res) => {
+    let strProfileID = getTrimmedString(req.body.strProfileID)
+    let strFullName = getTrimmedString(req.body.strFullName)
+    let strPhone = getTrimmedString(req.body.strPhone)
+    let strEmail = getTrimmedString(req.body.strEmail)
+    let strLinkedIn = getTrimmedString(req.body.strLinkedIn)
+    let strGitHub = getTrimmedString(req.body.strGitHub)
+    let strWebsite = getTrimmedString(req.body.strWebsite)
+
+    let blnError = false
+    let strMessage = ''
+
+    if(strProfileID.length < 1){
+        blnError = true
+        strMessage += 'You must provide a profile id. '
+    }
+    if(strFullName.length < 1){
+        blnError = true
+        strMessage += 'You must provide your full name. '
+    }
+
+    if(blnError == false){
+        const strQuery = "UPDATE tblProfile SET strFullName = ?, strPhone = ?, strEmail = ?, strLinkedIn = ?, strGitHub = ?, strWebsite = ? WHERE strProfileID = ?"
+        dbResume.run(strQuery, [strFullName, strPhone, strEmail, strLinkedIn, strGitHub, strWebsite, strProfileID], function(err){
+            if(err){
+                res.status(500).json({outcome: "error", message: err.message})
+            } else {
+                res.status(200).json({outcome: "success", message: `Profile updated with id ${strProfileID}`})
+            }
+        })
+    } else {
+        res.status(400).json({errorMessage: strMessage.trim()})
+    }
+})
+
+// ============================================================
+// SECTION: Education Routes
+// ============================================================
+
+// GET /api/education
+// Returns a JSON array of all education records ordered by start date
+// descending so the most recent credential appears first.
+app.get('/api/education', (req, res) => {
+    const strQuery = "SELECT * FROM tblEducation ORDER BY strStartDate DESC"
+    dbResume.all(strQuery, [], function(err, rows){
+        if(err){
+            res.status(500).json({outcome: "error", message: err.message})
+        } else {
+            res.status(200).json(rows)
+        }
+    })
+})
+
+// POST /api/education
+// Creates a new education record.  strInstitutionName and strDegree are
+// required; all other fields are optional.
+app.post('/api/education', (req, res) => {
+    let strInstitutionName = getTrimmedString(req.body.strInstitutionName)
+    let strDegree = getTrimmedString(req.body.strDegree)
+    let strFieldOfStudy = getTrimmedString(req.body.strFieldOfStudy)
+    let strStartDate = getTrimmedString(req.body.strStartDate)
+    let strEndDate = getTrimmedString(req.body.strEndDate)
+
+    let blnError = false
+    let strMessage = ''
+
+    if(strInstitutionName.length < 1){
+        blnError = true
+        strMessage += 'You must provide an institution name. '
+    }
+    if(strDegree.length < 1){
+        blnError = true
+        strMessage += 'You must provide a degree. '
+    }
+
+    if(blnError == false){
+        const strEducationID = uuidv4()
+        const strQuery = "INSERT INTO tblEducation VALUES (?,?,?,?,?,?)"
+        dbResume.run(strQuery, [strEducationID, strInstitutionName, strDegree, strFieldOfStudy, strStartDate, strEndDate], function(err){
+            if(err){
+                res.status(500).json({outcome: "error", message: err.message})
+            } else {
+                res.status(201).json({outcome: "success", message: `Education created with id ${strEducationID}`})
+            }
+        })
+    } else {
+        res.status(400).json({errorMessage: strMessage.trim()})
+    }
+})
+
+// PUT /api/education
+// Updates an existing education record.  strEducationID, strInstitutionName,
+// and strDegree are all required.
+app.put('/api/education', (req, res) => {
+    let strEducationID = getTrimmedString(req.body.strEducationID)
+    let strInstitutionName = getTrimmedString(req.body.strInstitutionName)
+    let strDegree = getTrimmedString(req.body.strDegree)
+    let strFieldOfStudy = getTrimmedString(req.body.strFieldOfStudy)
+    let strStartDate = getTrimmedString(req.body.strStartDate)
+    let strEndDate = getTrimmedString(req.body.strEndDate)
+
+    let blnError = false
+    let strMessage = ''
+
+    if(strEducationID.length < 1){
+        blnError = true
+        strMessage += 'You must provide an education id. '
+    }
+    if(strInstitutionName.length < 1){
+        blnError = true
+        strMessage += 'You must provide an institution name. '
+    }
+    if(strDegree.length < 1){
+        blnError = true
+        strMessage += 'You must provide a degree. '
+    }
+
+    if(blnError == false){
+        const strQuery = "UPDATE tblEducation SET strInstitutionName = ?, strDegree = ?, strFieldOfStudy = ?, strStartDate = ?, strEndDate = ? WHERE strEducationID = ?"
+        dbResume.run(strQuery, [strInstitutionName, strDegree, strFieldOfStudy, strStartDate, strEndDate, strEducationID], function(err){
+            if(err){
+                res.status(500).json({outcome: "error", message: err.message})
+            } else {
+                res.status(200).json({outcome: "success", message: `Education updated with id ${strEducationID}`})
+            }
+        })
+    } else {
+        res.status(400).json({errorMessage: strMessage.trim()})
+    }
+})
+
+// DELETE /api/education/:educationid
+// Permanently deletes the education record identified by the URL parameter.
+app.delete('/api/education/:educationid', (req, res) => {
+    let strEducationID = req.params.educationid
+
+    let blnError = false
+    let strMessage = ''
+
+    if(strEducationID.length < 1){
+        blnError = true
+        strMessage += 'You must provide an education id.'
+    }
+
+    if(blnError == false){
+        const strQuery = "DELETE FROM tblEducation WHERE strEducationID = ?"
+        dbResume.run(strQuery, [strEducationID], function(err){
+            if(err){
+                res.status(500).json({outcome: "error", message: err.message})
+            } else {
+                res.status(200).json({outcome: "success", message: `Education deleted with id ${strEducationID}`})
             }
         })
     } else {
