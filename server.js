@@ -88,10 +88,10 @@ const objDatabaseReadyPromise = new Promise((resolve, reject) => {
                     strWebsite TEXT
                 )`)
 
-                // tblEducation stores one row per academic credential.
-                // tblEducation is the LAST table created inside serialize() so
-                // its callback is responsible for resolving the database-ready
-                // promise and unblocking the server startup sequence.
+
+                // tblEducation is the LAST table created inside serialize().
+                // Its callback resolves objDatabaseReadyPromise and unblocks
+                // server startup.  All tables above must be created first.
                 dbResume.run(`CREATE TABLE IF NOT EXISTS tblEducation (
                     strEducationID TEXT PRIMARY KEY,
                     strInstitutionName TEXT NOT NULL,
@@ -193,7 +193,7 @@ app.post('/api/jobs', (req, res) => {
             if(err){
                 res.status(500).json({outcome: "error", message: err.message})
             } else {
-                res.status(201).json({outcome: "success", message: `Job created with id ${strJobID}`})
+                res.status(201).json({outcome: "success", message: `Job created with id ${strJobID}`, strJobID: strJobID})
             }
         })
     } else {
@@ -890,7 +890,7 @@ app.post('/api/gemini', async (req, res) => {
     }
     if(!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY.trim().length < 1){
         blnError = true
-        strMessage += ' GEMINI_API_KEY is missing from the .env file.'
+        strMessage += ' AI feedback is not available at this time.'
     }
 
     if(blnError == false){
