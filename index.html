@@ -2,255 +2,212 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:*;">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Resume Builder</title>
-    <!-- Bootstrap must load before FontAwesome so utility classes apply first -->
     <link rel="stylesheet" href="css/lib/bootstrap.min.css">
-    <!-- FontAwesome loaded locally via postinstall.js — no CDN dependency -->
     <link rel="stylesheet" href="css/lib/all.min.css">
+    <style>
+        /* ── Sidebar active state ── */
+        .nav-active {
+            background-color: rgba(255,255,255,0.22) !important;
+            border-radius: 0.375rem;
+        }
+        /* ── Dashboard card hover lift ── */
+        .dashboard-card {
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .dashboard-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 0.75rem 1.5rem rgba(0,0,0,0.12) !important;
+        }
+        /* ── Modal item row hover ── */
+        .modal-record-row:hover {
+            background-color: #f8f9fa;
+        }
+        /* ── Topbar profile button ── */
+        #btnNavProfile {
+            border-radius: 50px;
+            padding: 0.35rem 0.75rem;
+        }
+        /* ── Sidebar brand as button ── */
+        #btnNavDashboard {
+            background: none;
+            border: none;
+            color: white;
+            text-decoration: none;
+            padding: 0;
+        }
+        #btnNavDashboard:hover,
+        #btnNavDashboard:focus {
+            color: rgba(255,255,255,0.85);
+        }
+    </style>
 </head>
 <body id="page-top">
 
-<!-- ============================================================
-     OUTER WRAPPER — flex row containing sidebar + content column
-     ============================================================ -->
 <div id="divWrapper" class="d-flex">
 
-    <!-- ========================================================
-         PERSISTENT LEFT SIDEBAR
-         SB Admin 2 inspired using Bootstrap 5 utility classes only.
-         min-height:100vh ensures the sidebar fills the full window
-         height even when the content area is short.
-         ======================================================== -->
+    <!-- ================================================================
+         SIDEBAR
+         ================================================================ -->
     <div id="divSidebar"
          class="d-flex flex-column flex-shrink-0 p-3 bg-primary bg-gradient text-white"
-         style="width:250px; min-height:100vh;">
+         style="width:250px; min-height:100vh; transition:width 0.2s ease; overflow:hidden;">
 
-        <!-- Brand / logo row -->
-        <span class="fs-5 fw-bold mb-3 d-flex align-items-center gap-2">
-            <i class="fas fa-file-alt fa-fw"></i>
-            Resume Builder
-        </span>
+        <!-- Brand = Dashboard home button -->
+        <button id="btnNavDashboard"
+                class="fs-5 fw-bold mb-3 d-flex align-items-center gap-2 w-100 text-start"
+                type="button"
+                aria-label="Go to Dashboard (home)">
+            <i class="fas fa-file-alt fa-fw flex-shrink-0"></i>
+            <span class="sidebar-text">Resume Builder</span>
+        </button>
 
-        <hr class="text-white-50">
+        <hr class="text-white-50 mt-0">
 
-        <!-- Navigation pills — one button per section -->
         <ul class="nav nav-pills flex-column mb-auto gap-1">
 
             <li>
-                <button class="nav-link text-white w-100 text-start"
-                        type="button"
-                        id="btnNavDashboard"
-                        aria-label="Go to Dashboard">
-                    <i class="fas fa-fw fa-tachometer-alt me-2"></i>Dashboard
-                </button>
-            </li>
-
-            <li>
-                <button class="nav-link text-white w-100 text-start"
-                        type="button"
-                        id="btnNavProfile"
-                        aria-label="Go to Profile">
-                    <i class="fas fa-fw fa-user me-2"></i>Profile
-                </button>
-            </li>
-
-            <li>
-                <button class="nav-link text-white w-100 text-start"
-                        type="button"
-                        id="btnNavEducation"
+                <button class="nav-link text-white w-100 text-start d-flex align-items-center gap-2"
+                        type="button" id="btnNavEducation"
                         aria-label="Go to Education">
-                    <i class="fas fa-fw fa-graduation-cap me-2"></i>Education
+                    <i class="fas fa-fw fa-graduation-cap flex-shrink-0"></i>
+                    <span class="sidebar-text">Education</span>
                 </button>
             </li>
 
             <li>
-                <button class="nav-link text-white w-100 text-start"
-                        type="button"
-                        id="btnNavJobs"
+                <button class="nav-link text-white w-100 text-start d-flex align-items-center gap-2"
+                        type="button" id="btnNavJobs"
                         aria-label="Go to Jobs">
-                    <i class="fas fa-fw fa-briefcase me-2"></i>Jobs
+                    <i class="fas fa-fw fa-briefcase flex-shrink-0"></i>
+                    <span class="sidebar-text">Jobs</span>
                 </button>
             </li>
 
             <li>
-                <button class="nav-link text-white w-100 text-start"
-                        type="button"
-                        id="btnNavSkills"
+                <button class="nav-link text-white w-100 text-start d-flex align-items-center gap-2"
+                        type="button" id="btnNavSkills"
                         aria-label="Go to Skills">
-                    <i class="fas fa-fw fa-tools me-2"></i>Skills
+                    <i class="fas fa-fw fa-tools flex-shrink-0"></i>
+                    <span class="sidebar-text">Skills</span>
                 </button>
             </li>
 
             <li>
-                <button class="nav-link text-white w-100 text-start"
-                        type="button"
-                        id="btnNavAwards"
-                        aria-label="Go to Awards">
-                    <i class="fas fa-fw fa-award me-2"></i>Awards
-                </button>
-            </li>
-
-            <li>
-                <button class="nav-link text-white w-100 text-start"
-                        type="button"
-                        id="btnNavCertifications"
+                <button class="nav-link text-white w-100 text-start d-flex align-items-center gap-2"
+                        type="button" id="btnNavCertifications"
                         aria-label="Go to Certifications">
-                    <i class="fas fa-fw fa-certificate me-2"></i>Certifications
+                    <i class="fas fa-fw fa-certificate flex-shrink-0"></i>
+                    <span class="sidebar-text">Certifications</span>
                 </button>
             </li>
 
             <li>
-                <button class="nav-link text-white w-100 text-start"
-                        type="button"
-                        id="btnNavResumeBuilder"
+                <button class="nav-link text-white w-100 text-start d-flex align-items-center gap-2"
+                        type="button" id="btnNavAwards"
+                        aria-label="Go to Awards">
+                    <i class="fas fa-fw fa-award flex-shrink-0"></i>
+                    <span class="sidebar-text">Awards</span>
+                </button>
+            </li>
+            <li>
+                <button class="nav-link text-white w-100 text-start d-flex align-items-center gap-2"
+                        type="button" id="btnNavResumeBuilder"
                         aria-label="Go to Resume Builder">
-                    <i class="fas fa-fw fa-newspaper me-2"></i>Resume Builder
+                    <i class="fas fa-fw fa-file-alt flex-shrink-0"></i>
+                    <span class="sidebar-text">Resume Builder</span>
                 </button>
             </li>
 
         </ul>
-
     </div>
     <!-- /divSidebar -->
 
-    <!-- ========================================================
-         CONTENT WRAPPER — topbar + main content area
-         flex-grow-1 lets it consume all remaining horizontal space
-         ======================================================== -->
-    <div class="d-flex flex-column flex-grow-1">
+    <!-- ================================================================
+         MAIN CONTENT AREA
+         ================================================================ -->
+    <div class="d-flex flex-column flex-grow-1 overflow-hidden">
 
-        <!-- ====================================================
-             TOPBAR — toggle button + current section name
-             ==================================================== -->
+        <!-- Topbar -->
         <nav class="navbar bg-white shadow-sm px-4 py-2 d-flex justify-content-between align-items-center">
-            <button class="btn btn-link text-dark p-0"
+            <div class="d-flex align-items-center gap-3">
+                <button class="btn btn-link text-dark p-0"
+                        type="button"
+                        id="btnSidebarToggle"
+                        aria-label="Toggle Sidebar">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <span class="fw-bold text-primary" id="spnCurrentSection">Dashboard</span>
+            </div>
+            <!-- Profile button — upper right corner -->
+            <button id="btnNavProfile"
+                    class="btn btn-outline-primary d-flex align-items-center gap-2"
                     type="button"
-                    id="btnSidebarToggle"
-                    aria-label="Toggle Sidebar">
-                <i class="fas fa-bars"></i>
+                    aria-label="Edit your profile">
+                <i class="fas fa-user-circle"></i>
+                <span class="sidebar-text">My Profile</span>
             </button>
-            <span class="fw-bold text-primary" id="spnCurrentSection">Dashboard</span>
         </nav>
 
-        <!-- ====================================================
-             MAIN CONTENT AREA
-             All sections are rendered here. Only one is visible
-             at a time — all others carry the d-none class.
-             ==================================================== -->
         <div class="container-fluid py-4 px-4 flex-grow-1">
 
-            <!-- ================================================
-                 SECTION: Dashboard
-                 Visible on load.  stat cards refresh via
-                 loadDashboard() which is called on init() and
-                 after every add/update/delete operation.
-                 ================================================ -->
+            <!-- ============================================================
+                 DASHBOARD — live resume preview
+                 Each stacked card mirrors the visual layout of the resume
+                 template and is clickable to navigate to that section.
+                 ============================================================ -->
             <div id="divDashboard">
+                <div class="row justify-content-center">
+                    <div class="col-11 col-xl-9">
 
-                <!-- Stat card row — five resources tracked -->
-                <div class="row g-4 mb-4">
-
-                    <!-- Jobs stat card -->
-                    <div class="col-xl-2 col-md-4 col-sm-6">
-                        <div class="card shadow border-start border-5 border-primary h-100 py-2">
-                            <div class="card-body">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <div>
-                                        <div class="text-uppercase fw-bold small text-primary mb-1">Jobs</div>
-                                        <div class="h5 fw-bold text-dark mb-0" id="pJobCount">0</div>
-                                    </div>
-                                    <i class="fas fa-briefcase fa-2x text-secondary opacity-25"></i>
-                                </div>
-                            </div>
+                        <!-- Profile header card -->
+                        <div id="divDashProfile" class="card shadow-sm mb-3"
+                             style="cursor:pointer"
+                             aria-label="Edit profile information">
                         </div>
-                    </div>
 
-                    <!-- Skills stat card -->
-                    <div class="col-xl-2 col-md-4 col-sm-6">
-                        <div class="card shadow border-start border-5 border-success h-100 py-2">
-                            <div class="card-body">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <div>
-                                        <div class="text-uppercase fw-bold small text-success mb-1">Skills</div>
-                                        <div class="h5 fw-bold text-dark mb-0" id="pSkillCount">0</div>
-                                    </div>
-                                    <i class="fas fa-tools fa-2x text-secondary opacity-25"></i>
-                                </div>
-                            </div>
+                        <!-- Education section card -->
+                        <div id="divDashEducation" class="card shadow-sm mb-3"
+                             style="cursor:pointer"
+                             aria-label="Edit education">
                         </div>
-                    </div>
 
-                    <!-- Awards stat card -->
-                    <div class="col-xl-2 col-md-4 col-sm-6">
-                        <div class="card shadow border-start border-5 border-warning h-100 py-2">
-                            <div class="card-body">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <div>
-                                        <div class="text-uppercase fw-bold small text-warning mb-1">Awards</div>
-                                        <div class="h5 fw-bold text-dark mb-0" id="pAwardCount">0</div>
-                                    </div>
-                                    <i class="fas fa-award fa-2x text-secondary opacity-25"></i>
-                                </div>
-                            </div>
+                        <!-- Work Experience section card -->
+                        <div id="divDashJobs" class="card shadow-sm mb-3"
+                             style="cursor:pointer"
+                             aria-label="Edit work experience">
                         </div>
-                    </div>
 
-                    <!-- Certifications stat card -->
-                    <div class="col-xl-2 col-md-4 col-sm-6">
-                        <div class="card shadow border-start border-5 border-info h-100 py-2">
-                            <div class="card-body">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <div>
-                                        <div class="text-uppercase fw-bold small text-info mb-1">Certifications</div>
-                                        <div class="h5 fw-bold text-dark mb-0" id="pCertCount">0</div>
-                                    </div>
-                                    <i class="fas fa-certificate fa-2x text-secondary opacity-25"></i>
-                                </div>
-                            </div>
+                        <!-- Skills section card -->
+                        <div id="divDashSkills" class="card shadow-sm mb-3"
+                             style="cursor:pointer"
+                             aria-label="Edit skills">
                         </div>
-                    </div>
 
-                    <!-- Education stat card -->
-                    <div class="col-xl-2 col-md-4 col-sm-6">
-                        <div class="card shadow border-start border-5 border-danger h-100 py-2">
-                            <div class="card-body">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <div>
-                                        <div class="text-uppercase fw-bold small text-danger mb-1">Education</div>
-                                        <div class="h5 fw-bold text-dark mb-0" id="pEduCount">0</div>
-                                    </div>
-                                    <i class="fas fa-graduation-cap fa-2x text-secondary opacity-25"></i>
-                                </div>
-                            </div>
+                        <!-- Certifications section card -->
+                        <div id="divDashCertifications" class="card shadow-sm mb-3"
+                             style="cursor:pointer"
+                             aria-label="Edit certifications">
                         </div>
-                    </div>
 
-                </div>
-                <!-- /stat card row -->
-
-                <!-- Welcome card below the stat row -->
-                <div class="row">
-                    <div class="col-12">
-                        <div class="card shadow-sm border-0">
-                            <div class="card-body">
-                                <h1 class="h3 mb-2">Build your resume step by step</h1>
-                                <p class="text-muted mb-0">Track your experience, curate your highlights, and assemble a polished resume preview for AI review.</p>
-                            </div>
+                        <!-- Awards section card -->
+                        <div id="divDashAwards" class="card shadow-sm mb-3"
+                             style="cursor:pointer"
+                             aria-label="Edit awards">
                         </div>
+
                     </div>
                 </div>
-
             </div>
             <!-- /divDashboard -->
 
-            <!-- ================================================
-                 SECTION: Profile
-                 Single form card — pre-populates if a profile
-                 already exists.  Only one profile record is
-                 ever stored; save logic calls POST or PUT
-                 depending on whether a record already exists.
-                 ================================================ -->
+            <!-- ============================================================
+                 PROFILE SECTION
+                 ============================================================ -->
             <div id="divProfile" class="d-none">
                 <div class="row g-4">
                     <div class="col-12">
@@ -261,63 +218,43 @@
 
                                     <div class="col-md-6">
                                         <label class="form-label text-muted" for="txtFullName">Full Name</label>
-                                        <input class="form-control"
-                                               id="txtFullName"
-                                               type="text"
-                                               placeholder="Jane Smith"
-                                               aria-label="Full Name">
+                                        <input class="form-control" id="txtFullName" type="text"
+                                               placeholder="Jane Smith" aria-label="Full Name">
                                     </div>
 
                                     <div class="col-md-6">
                                         <label class="form-label text-muted" for="txtPhone">Phone</label>
-                                        <input class="form-control"
-                                               id="txtPhone"
-                                               type="tel"
-                                               placeholder="(555) 555-5555"
-                                               aria-label="Phone">
+                                        <input class="form-control" id="txtPhone" type="tel"
+                                               placeholder="(555) 555-5555" aria-label="Phone">
                                     </div>
 
                                     <div class="col-md-6">
                                         <label class="form-label text-muted" for="txtEmail">Email</label>
-                                        <input class="form-control"
-                                               id="txtEmail"
-                                               type="email"
-                                               placeholder="jane@example.com"
-                                               aria-label="Email">
+                                        <input class="form-control" id="txtEmail" type="email"
+                                               placeholder="jane@example.com" aria-label="Email">
                                     </div>
 
                                     <div class="col-md-6">
                                         <label class="form-label text-muted" for="txtLinkedIn">LinkedIn URL</label>
-                                        <input class="form-control"
-                                               id="txtLinkedIn"
-                                               type="url"
-                                               placeholder="https://linkedin.com/in/janesmith"
-                                               aria-label="LinkedIn URL">
+                                        <input class="form-control" id="txtLinkedIn" type="url"
+                                               placeholder="https://linkedin.com/in/janesmith" aria-label="LinkedIn URL">
                                     </div>
 
                                     <div class="col-md-6">
                                         <label class="form-label text-muted" for="txtGitHub">GitHub URL</label>
-                                        <input class="form-control"
-                                               id="txtGitHub"
-                                               type="url"
-                                               placeholder="https://github.com/janesmith"
-                                               aria-label="GitHub URL">
+                                        <input class="form-control" id="txtGitHub" type="url"
+                                               placeholder="https://github.com/janesmith" aria-label="GitHub URL">
                                     </div>
 
                                     <div class="col-md-6">
                                         <label class="form-label text-muted" for="txtWebsite">Website URL</label>
-                                        <input class="form-control"
-                                               id="txtWebsite"
-                                               type="url"
-                                               placeholder="https://janesmith.dev"
-                                               aria-label="Website URL">
+                                        <input class="form-control" id="txtWebsite" type="url"
+                                               placeholder="https://janesmith.dev" aria-label="Website URL">
                                     </div>
 
                                     <div class="col-12">
-                                        <button class="btn btn-primary"
-                                                type="button"
-                                                id="btnSaveProfile"
-                                                aria-label="Save Profile">
+                                        <button class="btn btn-primary" type="button"
+                                                id="btnSaveProfile" aria-label="Save Profile">
                                             Save Profile
                                         </button>
                                     </div>
@@ -330,24 +267,17 @@
             </div>
             <!-- /divProfile -->
 
-            <!-- ================================================
-                 SECTION: Education
-                 Add form at the top; list of records below.
-                 Edit/delete use event delegation on divEducationList.
-                 SweetAlert2 is used for save/update/delete
-                 success, errors, and delete confirmation.
-                 ================================================ -->
+            <!-- ============================================================
+                 EDUCATION SECTION
+                 ============================================================ -->
             <div id="divEducation" class="d-none">
                 <div class="row g-4">
-
-                    <!-- Add / Edit form card -->
                     <div class="col-12">
                         <div class="card shadow-sm border-0">
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center mb-3">
                                     <h2 class="h4 mb-0">Education</h2>
-                                    <button class="btn btn-secondary d-none"
-                                            type="button"
+                                    <button class="btn btn-secondary d-none" type="button"
                                             id="btnCancelEditEducation"
                                             aria-label="Cancel editing education record">
                                         Cancel Edit
@@ -357,52 +287,48 @@
 
                                     <div class="col-md-6">
                                         <label class="form-label text-muted" for="txtInstitutionName">Institution Name</label>
-                                        <input class="form-control"
-                                               id="txtInstitutionName"
-                                               type="text"
-                                               placeholder="Tennessee Tech University"
-                                               aria-label="Institution Name">
+                                        <input class="form-control" id="txtInstitutionName" type="text"
+                                               placeholder="Tennessee Tech University" aria-label="Institution Name">
                                     </div>
 
                                     <div class="col-md-6">
                                         <label class="form-label text-muted" for="txtDegree">Degree</label>
-                                        <input class="form-control"
-                                               id="txtDegree"
-                                               type="text"
-                                               placeholder="Bachelor of Science"
-                                               aria-label="Degree">
+                                        <input class="form-control" id="txtDegree" type="text"
+                                               placeholder="Bachelor of Science" aria-label="Degree">
                                     </div>
 
                                     <div class="col-md-6">
                                         <label class="form-label text-muted" for="txtFieldOfStudy">Field of Study</label>
-                                        <input class="form-control"
-                                               id="txtFieldOfStudy"
-                                               type="text"
-                                               placeholder="Computer Science"
-                                               aria-label="Field of Study">
+                                        <input class="form-control" id="txtFieldOfStudy" type="text"
+                                               placeholder="Computer Science" aria-label="Field of Study">
                                     </div>
 
                                     <div class="col-md-3">
                                         <label class="form-label text-muted" for="txtEduStartDate">Start Date</label>
-                                        <input class="form-control"
-                                               id="txtEduStartDate"
-                                               type="date"
+                                        <input class="form-control" id="txtEduStartDate" type="date"
                                                aria-label="Education Start Date">
                                     </div>
 
                                     <div class="col-md-3">
                                         <label class="form-label text-muted" for="txtEduEndDate">End Date</label>
-                                        <input class="form-control"
-                                               id="txtEduEndDate"
-                                               type="date"
+                                        <input class="form-control" id="txtEduEndDate" type="date"
                                                aria-label="Education End Date">
                                     </div>
 
                                     <div class="col-12">
-                                        <button class="btn btn-primary"
-                                                type="button"
-                                                id="btnSaveEducation"
-                                                aria-label="Save Education">
+                                        <div class="form-check">
+                                            <input class="form-check-input" id="chkCurrentlyAttending"
+                                                   type="checkbox"
+                                                   aria-label="I currently attend this institution">
+                                            <label class="form-check-label" for="chkCurrentlyAttending">
+                                                I currently attend this institution
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-12">
+                                        <button class="btn btn-primary" type="button"
+                                                id="btnSaveEducation" aria-label="Save Education">
                                             Save Education
                                         </button>
                                     </div>
@@ -411,36 +337,25 @@
                             </div>
                         </div>
                     </div>
-
-                    <!-- Education list — populated by loadEducation() -->
                     <div class="col-12">
                         <div id="divEducationList"></div>
                     </div>
-
                 </div>
             </div>
             <!-- /divEducation -->
 
-            <!-- ================================================
-                 SECTION: Jobs
-                 Form at top for add/edit; dynamic list below.
-                 Responsibilities are rendered inside each job
-                 card. Event delegation on divJobsList handles
-                 edit, delete, add responsibility, and delete
-                 responsibility actions.
-                 ================================================ -->
+            <!-- ============================================================
+                 JOBS SECTION
+                 ============================================================ -->
             <div id="divJobs" class="d-none">
                 <div class="row g-4">
-
                     <div class="col-12">
                         <div class="card shadow-sm border-0">
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center mb-3">
                                     <h2 class="h4 mb-0">Jobs</h2>
-                                    <button class="btn btn-secondary d-none"
-                                            type="button"
-                                            id="btnCancelEditJob"
-                                            aria-label="Cancel editing job">
+                                    <button class="btn btn-secondary d-none" type="button"
+                                            id="btnCancelEditJob" aria-label="Cancel editing job">
                                         Cancel Edit
                                     </button>
                                 </div>
@@ -448,43 +363,64 @@
 
                                     <div class="col-md-6">
                                         <label class="form-label text-muted" for="txtRoleName">Role Name</label>
-                                        <input class="form-control"
-                                               id="txtRoleName"
-                                               type="text"
-                                               placeholder="Senior Analyst"
-                                               aria-label="Role Name">
+                                        <input class="form-control" id="txtRoleName" type="text"
+                                               placeholder="Senior Analyst" aria-label="Role Name">
                                     </div>
 
                                     <div class="col-md-6">
                                         <label class="form-label text-muted" for="txtCompanyName">Company Name</label>
-                                        <input class="form-control"
-                                               id="txtCompanyName"
-                                               type="text"
-                                               placeholder="Acme Corp"
-                                               aria-label="Company Name">
+                                        <input class="form-control" id="txtCompanyName" type="text"
+                                               placeholder="Acme Corp" aria-label="Company Name">
                                     </div>
 
                                     <div class="col-md-6">
                                         <label class="form-label text-muted" for="txtStartDate">Start Date</label>
-                                        <input class="form-control"
-                                               id="txtStartDate"
-                                               type="date"
+                                        <input class="form-control" id="txtStartDate" type="date"
                                                aria-label="Start Date">
                                     </div>
 
                                     <div class="col-md-6">
                                         <label class="form-label text-muted" for="txtEndDate">End Date</label>
-                                        <input class="form-control"
-                                               id="txtEndDate"
-                                               type="date"
+                                        <input class="form-control" id="txtEndDate" type="date"
                                                aria-label="End Date">
                                     </div>
 
                                     <div class="col-12">
-                                        <button class="btn btn-primary"
-                                                type="button"
-                                                id="btnSaveJob"
-                                                aria-label="Save Job">
+                                        <div class="form-check">
+                                            <input class="form-check-input" id="chkCurrentlyWorking"
+                                                   type="checkbox" aria-label="I currently work here">
+                                            <label class="form-check-label" for="chkCurrentlyWorking">
+                                                I currently work here
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <!-- Responsibilities — preview list ABOVE the input -->
+                                    <div class="col-12">
+                                        <hr>
+                                        <h5 class="h6 mb-3">Add Responsibilities</h5>
+                                        <!-- Pending list renders here, ABOVE the text input -->
+                                        <div id="divResponsibilityPreview" class="mb-3"></div>
+                                        <div class="row g-2">
+                                            <div class="col-md-9">
+                                                <label class="form-label text-muted" for="txtNewResponsibility">New Responsibility</label>
+                                                <input class="form-control" id="txtNewResponsibility" type="text"
+                                                       placeholder="Managed a team of five engineers"
+                                                       aria-label="New responsibility description">
+                                            </div>
+                                            <div class="col-md-3 d-flex align-items-end">
+                                                <button class="btn btn-success w-100" type="button"
+                                                        id="btnAddResponsibility"
+                                                        aria-label="Add responsibility to pending list">
+                                                    Add
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-12">
+                                        <button class="btn btn-primary" type="button"
+                                                id="btnSaveJob" aria-label="Save Job">
                                             Save Job
                                         </button>
                                     </div>
@@ -493,33 +429,25 @@
                             </div>
                         </div>
                     </div>
-
                     <div class="col-12">
                         <div id="divJobsList"></div>
                     </div>
-
                 </div>
             </div>
             <!-- /divJobs -->
 
-            <!-- ================================================
-                 SECTION: Skills
-                 Form at top; dynamic list below.
-                 Add/update/delete operations reload silently —
-                 no SweetAlert2 except for validation errors.
-                 ================================================ -->
+            <!-- ============================================================
+                 SKILLS SECTION
+                 ============================================================ -->
             <div id="divSkills" class="d-none">
                 <div class="row g-4">
-
                     <div class="col-12">
                         <div class="card shadow-sm border-0">
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center mb-3">
                                     <h2 class="h4 mb-0">Skills</h2>
-                                    <button class="btn btn-secondary d-none"
-                                            type="button"
-                                            id="btnCancelEditSkill"
-                                            aria-label="Cancel editing skill">
+                                    <button class="btn btn-secondary d-none" type="button"
+                                            id="btnCancelEditSkill" aria-label="Cancel editing skill">
                                         Cancel Edit
                                     </button>
                                 </div>
@@ -527,27 +455,19 @@
 
                                     <div class="col-md-6">
                                         <label class="form-label text-muted" for="txtSkillName">Skill Name</label>
-                                        <input class="form-control"
-                                               id="txtSkillName"
-                                               type="text"
-                                               placeholder="Project Management"
-                                               aria-label="Skill Name">
+                                        <input class="form-control" id="txtSkillName" type="text"
+                                               placeholder="Project Management" aria-label="Skill Name">
                                     </div>
 
                                     <div class="col-md-6">
                                         <label class="form-label text-muted" for="txtProficiencyLevel">Proficiency Level</label>
-                                        <input class="form-control"
-                                               id="txtProficiencyLevel"
-                                               type="text"
-                                               placeholder="Advanced"
-                                               aria-label="Proficiency Level">
+                                        <input class="form-control" id="txtProficiencyLevel" type="text"
+                                               placeholder="Advanced" aria-label="Proficiency Level">
                                     </div>
 
                                     <div class="col-12">
-                                        <button class="btn btn-primary"
-                                                type="button"
-                                                id="btnSaveSkill"
-                                                aria-label="Save Skill">
+                                        <button class="btn btn-primary" type="button"
+                                                id="btnSaveSkill" aria-label="Save Skill">
                                             Save Skill
                                         </button>
                                     </div>
@@ -556,32 +476,25 @@
                             </div>
                         </div>
                     </div>
-
                     <div class="col-12">
                         <div id="divSkillsList"></div>
                     </div>
-
                 </div>
             </div>
             <!-- /divSkills -->
 
-            <!-- ================================================
-                 SECTION: Awards
-                 Form at top; dynamic list below.
-                 Add/update/delete operations reload silently.
-                 ================================================ -->
+            <!-- ============================================================
+                 AWARDS SECTION
+                 ============================================================ -->
             <div id="divAwards" class="d-none">
                 <div class="row g-4">
-
                     <div class="col-12">
                         <div class="card shadow-sm border-0">
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center mb-3">
                                     <h2 class="h4 mb-0">Awards</h2>
-                                    <button class="btn btn-secondary d-none"
-                                            type="button"
-                                            id="btnCancelEditAward"
-                                            aria-label="Cancel editing award">
+                                    <button class="btn btn-secondary d-none" type="button"
+                                            id="btnCancelEditAward" aria-label="Cancel editing award">
                                         Cancel Edit
                                     </button>
                                 </div>
@@ -589,35 +502,26 @@
 
                                     <div class="col-md-6">
                                         <label class="form-label text-muted" for="txtAwardName">Award Name</label>
-                                        <input class="form-control"
-                                               id="txtAwardName"
-                                               type="text"
-                                               placeholder="Top Performer"
-                                               aria-label="Award Name">
+                                        <input class="form-control" id="txtAwardName" type="text"
+                                               placeholder="Top Performer" aria-label="Award Name">
                                     </div>
 
                                     <div class="col-md-6">
                                         <label class="form-label text-muted" for="txtAwardDate">Award Date</label>
-                                        <input class="form-control"
-                                               id="txtAwardDate"
-                                               type="date"
+                                        <input class="form-control" id="txtAwardDate" type="date"
                                                aria-label="Award Date">
                                     </div>
 
                                     <div class="col-12">
                                         <label class="form-label text-muted" for="txtAwardDescription">Description</label>
-                                        <textarea class="form-control"
-                                                  id="txtAwardDescription"
-                                                  rows="3"
+                                        <textarea class="form-control" id="txtAwardDescription" rows="3"
                                                   placeholder="Describe the award and why it matters"
                                                   aria-label="Award Description"></textarea>
                                     </div>
 
                                     <div class="col-12">
-                                        <button class="btn btn-primary"
-                                                type="button"
-                                                id="btnSaveAward"
-                                                aria-label="Save Award">
+                                        <button class="btn btn-primary" type="button"
+                                                id="btnSaveAward" aria-label="Save Award">
                                             Save Award
                                         </button>
                                     </div>
@@ -626,30 +530,24 @@
                             </div>
                         </div>
                     </div>
-
                     <div class="col-12">
                         <div id="divAwardsList"></div>
                     </div>
-
                 </div>
             </div>
             <!-- /divAwards -->
 
-            <!-- ================================================
-                 SECTION: Certifications
-                 Form at top; dynamic list below.
-                 Add/update/delete operations reload silently.
-                 ================================================ -->
+            <!-- ============================================================
+                 CERTIFICATIONS SECTION
+                 ============================================================ -->
             <div id="divCertifications" class="d-none">
                 <div class="row g-4">
-
                     <div class="col-12">
                         <div class="card shadow-sm border-0">
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center mb-3">
                                     <h2 class="h4 mb-0">Certifications</h2>
-                                    <button class="btn btn-secondary d-none"
-                                            type="button"
+                                    <button class="btn btn-secondary d-none" type="button"
                                             id="btnCancelEditCertification"
                                             aria-label="Cancel editing certification">
                                         Cancel Edit
@@ -659,35 +557,25 @@
 
                                     <div class="col-md-6">
                                         <label class="form-label text-muted" for="txtCertificationName">Certification Name</label>
-                                        <input class="form-control"
-                                               id="txtCertificationName"
-                                               type="text"
-                                               placeholder="PMP"
-                                               aria-label="Certification Name">
+                                        <input class="form-control" id="txtCertificationName" type="text"
+                                               placeholder="PMP" aria-label="Certification Name">
                                     </div>
 
                                     <div class="col-md-6">
                                         <label class="form-label text-muted" for="txtIssuingOrganization">Issuing Organization</label>
-                                        <input class="form-control"
-                                               id="txtIssuingOrganization"
-                                               type="text"
-                                               placeholder="PMI"
-                                               aria-label="Issuing Organization">
+                                        <input class="form-control" id="txtIssuingOrganization" type="text"
+                                               placeholder="PMI" aria-label="Issuing Organization">
                                     </div>
 
                                     <div class="col-md-6">
                                         <label class="form-label text-muted" for="txtDateEarned">Date Earned</label>
-                                        <input class="form-control"
-                                               id="txtDateEarned"
-                                               type="date"
+                                        <input class="form-control" id="txtDateEarned" type="date"
                                                aria-label="Date Earned">
                                     </div>
 
                                     <div class="col-12">
-                                        <button class="btn btn-primary"
-                                                type="button"
-                                                id="btnSaveCertification"
-                                                aria-label="Save Certification">
+                                        <button class="btn btn-primary" type="button"
+                                                id="btnSaveCertification" aria-label="Save Certification">
                                             Save Certification
                                         </button>
                                     </div>
@@ -696,70 +584,60 @@
                             </div>
                         </div>
                     </div>
-
                     <div class="col-12">
                         <div id="divCertificationsList"></div>
                     </div>
-
                 </div>
             </div>
             <!-- /divCertifications -->
 
-            <!-- ================================================
-                 SECTION: Resume Builder
-                 Three sub-panels:
-                   1. divResumeSelections — checkboxes for content
-                   2. divResumePreview   — assembled preview (hidden until built)
-                   3. divGeminiFeedback  — AI feedback (hidden until returned)
-                 ================================================ -->
+            <!-- ============================================================
+                 RESUME BUILDER SECTION
+                 ============================================================ -->
             <div id="divResumeBuilder" class="d-none">
                 <div class="row g-4">
 
-                    <!-- Selection panel -->
                     <div class="col-12">
                         <div class="card shadow-sm border-0">
                             <div class="card-body">
                                 <h2 class="h4 mb-2">Resume Builder</h2>
                                 <p class="text-muted mb-3">Choose the content you want to include in your resume preview, then request AI feedback once the preview looks right.</p>
-                                <!-- Populated by loadResumeBuilder() -->
                                 <div id="divResumeSelections"></div>
-                                <div class="mt-3">
-                                    <button class="btn btn-primary"
-                                            type="button"
-                                            id="btnPreviewResume"
-                                            aria-label="Preview Resume">
+                                <div class="mt-3 d-flex gap-2">
+                                    <button class="btn btn-primary" type="button"
+                                            id="btnPreviewResume" aria-label="Preview Resume">
                                         Preview Resume
+                                    </button>
+                                    <button class="btn btn-secondary" type="button"
+                                            id="btnExportPDF" aria-label="Export Resume as PDF">
+                                        <i class="fas fa-file-pdf me-2"></i>Export PDF
                                     </button>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Preview panel — hidden until btnPreviewResume is clicked -->
+                    <!-- Preview panel -->
                     <div class="col-12">
                         <div class="card shadow-sm border-0 d-none" id="divResumePreview">
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center mb-3">
                                     <h3 class="h4 mb-0">Resume Preview</h3>
-                                    <button class="btn btn-success"
-                                            type="button"
-                                            id="btnGetFeedback"
-                                            aria-label="Get AI Feedback">
+                                    <button class="btn btn-success" type="button"
+                                            id="btnGetFeedback" aria-label="Get AI Feedback">
                                         Get AI Feedback
                                     </button>
                                 </div>
-                                <!-- Assembled preview HTML injected here -->
                                 <div id="divPreviewContent"></div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Gemini feedback panel — hidden until feedback is returned -->
+                    <!-- Feedback panel -->
                     <div class="col-12">
                         <div class="card shadow-sm border-0 d-none" id="divGeminiFeedback">
                             <div class="card-body">
                                 <h3 class="h4 mb-3">Gemini Feedback</h3>
-                                <!-- Strengths / weaknesses / suggestions cards injected here -->
                                 <div id="divFeedbackContent"></div>
                             </div>
                         </div>
@@ -771,16 +649,173 @@
 
         </div>
         <!-- /container-fluid -->
-
     </div>
     <!-- /content wrapper -->
 
 </div>
 <!-- /divWrapper -->
 
-<!-- Script load order: Bootstrap bundle → SweetAlert2 → app.js -->
+
+<!-- ================================================================
+     DASHBOARD OVERLAY MODALS
+     ================================================================ -->
+
+<!-- Profile Modal -->
+<div class="modal fade" id="modalProfile" tabindex="-1" aria-labelledby="modalProfileLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modalProfileLabel">
+                    <i class="fas fa-user me-2"></i>Profile
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">This is the information that will appear at the top of your resume.</p>
+                <div id="divModalProfileContent">
+                    <div class="text-muted fst-italic">Loading…</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="btnModalGoProfile">
+                    <i class="fas fa-edit me-1"></i>Edit Profile
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Education Modal -->
+<div class="modal fade" id="modalEducation" tabindex="-1" aria-labelledby="modalEducationLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#6c757d; color:white;">
+                <h5 class="modal-title" id="modalEducationLabel">
+                    <i class="fas fa-graduation-cap me-2"></i>Education
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="divModalEducationContent">
+                    <div class="text-muted fst-italic">Loading…</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="btnModalGoEducation">
+                    <i class="fas fa-plus me-1"></i>Manage Education
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Jobs Modal -->
+<div class="modal fade" id="modalJobs" tabindex="-1" aria-labelledby="modalJobsLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modalJobsLabel">
+                    <i class="fas fa-briefcase me-2"></i>Jobs
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="divModalJobsContent">
+                    <div class="text-muted fst-italic">Loading…</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="btnModalGoJobs">
+                    <i class="fas fa-plus me-1"></i>Manage Jobs
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Skills Modal -->
+<div class="modal fade" id="modalSkills" tabindex="-1" aria-labelledby="modalSkillsLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="modalSkillsLabel">
+                    <i class="fas fa-tools me-2"></i>Skills
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="divModalSkillsContent">
+                    <div class="text-muted fst-italic">Loading…</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-success" id="btnModalGoSkills">
+                    <i class="fas fa-plus me-1"></i>Manage Skills
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Certifications Modal -->
+<div class="modal fade" id="modalCertifications" tabindex="-1" aria-labelledby="modalCertsLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="modalCertsLabel">
+                    <i class="fas fa-certificate me-2"></i>Certifications
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="divModalCertsContent">
+                    <div class="text-muted fst-italic">Loading…</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-info text-white" id="btnModalGoCerts">
+                    <i class="fas fa-plus me-1"></i>Manage Certifications
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Awards Modal -->
+<div class="modal fade" id="modalAwards" tabindex="-1" aria-labelledby="modalAwardsLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#ffc107; color:#212529;">
+                <h5 class="modal-title" id="modalAwardsLabel">
+                    <i class="fas fa-trophy me-2"></i>Awards
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="divModalAwardsContent">
+                    <div class="text-muted fst-italic">Loading…</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-warning" id="btnModalGoAwards">
+                    <i class="fas fa-plus me-1"></i>Manage Awards
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Script load order: Bootstrap bundle → SweetAlert2 → jsPDF → app.js -->
 <script src="js/lib/bootstrap.bundle.min.js"></script>
 <script src="js/lib/sweetalert2@11.min.js"></script>
+<script src="js/lib/jspdf.umd.min.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
