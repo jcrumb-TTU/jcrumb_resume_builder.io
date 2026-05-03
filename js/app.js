@@ -1,4 +1,17 @@
 // ============================================================
+// This file was generated through a collaborative process
+// combining Claude Sonnet 4.6 (Anthropic) and AI-assisted
+// code generation tools across multiple development phases.
+// Prompts used to produce this code were crafted using
+// Claude Sonnet 4.6 and were designed to operate within
+// the parameters covered in CSC 3100 during the Spring
+// Semester of 2026, referencing the course AGENT.md
+// conventions and class code examples developed throughout
+// the semester. The author reviewed, oversaw, and approved
+// all generated code prior to final commit and push to
+// the project repository.
+// ============================================================
+// ============================================================
 // CONSTANTS
 // ============================================================
 
@@ -65,7 +78,8 @@ const showSection = (strSectionID, strSectionLabel) => {
         '#divSkills',
         '#divAwards',
         '#divCertifications',
-        '#divResumeBuilder'
+        '#divResumeBuilder',
+        '#divCredits'
     ]
 
     // Hide every section first
@@ -83,7 +97,8 @@ const showSection = (strSectionID, strSectionLabel) => {
     const arrNavBtns = [
         '#btnNavDashboard', '#btnNavProfile', '#btnNavEducation', '#btnNavJobs',
         '#btnNavSkills', '#btnNavCertifications', '#btnNavAwards',
-        '#btnNavResumeBuilder'
+        '#btnNavResumeBuilder',
+        '#btnNavCredits'
     ]
     arrNavBtns.forEach((strBtnID) => {
         const elBtn = document.querySelector(strBtnID)
@@ -97,7 +112,8 @@ const showSection = (strSectionID, strSectionLabel) => {
         '#divSkills':        '#btnNavSkills',
         '#divCertifications':'#btnNavCertifications',
         '#divAwards':        '#btnNavAwards',
-        '#divResumeBuilder': '#btnNavResumeBuilder'
+        '#divResumeBuilder': '#btnNavResumeBuilder',
+        '#divCredits':       '#btnNavCredits'
     }
     const strActiveBtn = objSectionNavMap[strSectionID]
     if(strActiveBtn){
@@ -152,6 +168,11 @@ document.querySelector('#btnNavResumeBuilder').addEventListener('click', async (
     showSection('#divResumeBuilder', 'Resume Builder')
     await loadResumeBuilder()
 })
+
+document.querySelector('#btnNavCredits').addEventListener('click', () => {
+    showSection('#divCredits', 'Credits & Acknowledgements')
+})
+
 
 // ============================================================
 // SECTION: Dashboard
@@ -2949,6 +2970,15 @@ document.querySelector('#btnGetFeedback').addEventListener('click', async () => 
     }
 })
 
+
+// ============================================================
+// SECTION: Credits
+// ============================================================
+
+// The credits section is purely static HTML rendered by index.html.
+// No load function or fetch calls are required — the content is
+// always present in the DOM and simply shown/hidden by showSection.
+
 // ============================================================
 // INITIALIZATION
 // ============================================================
@@ -2974,3 +3004,17 @@ const init = async () => {
 }
 
 init()
+
+// ============================================================
+// This file was generated through a collaborative process
+// combining Claude Sonnet 4.6 (Anthropic) and AI-assisted
+// code generation tools across multiple development phases.
+// Prompts used to produce this code were crafted using
+// Claude Sonnet 4.6 and were designed to operate within
+// the parameters covered in CSC 3100 during the Spring
+// Semester of 2026, referencing the course AGENT.md
+// conventions and class code examples developed throughout
+// the semester. The author reviewed, oversaw, and approved
+// all generated code prior to final commit and push to
+// the project repository.
+// ============================================================
