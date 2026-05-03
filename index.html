@@ -1,3 +1,18 @@
+<!--
+============================================================
+This file was generated through a collaborative process
+combining Claude Sonnet 4.6 (Anthropic) and AI-assisted
+code generation tools across multiple development phases.
+Prompts used to produce this code were crafted using
+Claude Sonnet 4.6 and were designed to operate within
+the parameters covered in CSC 3100 during the Spring
+Semester of 2026, referencing the course AGENT.md
+conventions and class code examples developed throughout
+the semester. The author reviewed, oversaw, and approved
+all generated code prior to final commit and push to
+the project repository.
+============================================================
+-->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -120,6 +135,17 @@
                         aria-label="Go to Resume Builder">
                     <i class="fas fa-fw fa-file-alt flex-shrink-0"></i>
                     <span class="sidebar-text">Resume Builder</span>
+                </button>
+            </li>
+
+
+            <hr class="text-white-50">
+            <li>
+                <button class="nav-link text-white w-100 text-start d-flex align-items-center gap-2"
+                        type="button" id="btnNavCredits"
+                        aria-label="View credits and acknowledgements">
+                    <i class="fas fa-fw fa-info-circle"></i>
+                    <span class="sidebar-text">Credits</span>
                 </button>
             </li>
 
@@ -647,6 +673,280 @@
             </div>
             <!-- /divResumeBuilder -->
 
+            <!-- ============================================================
+                 CREDITS SECTION
+                 ============================================================ -->
+            <div id="divCredits" class="container-fluid py-4 d-none">
+                <div class="row justify-content-center">
+                    <div class="col-11 col-xl-9">
+
+                        <!-- Page header -->
+                        <div class="mb-4">
+                            <h2 class="text-white fw-bold">Credits &amp; Acknowledgements</h2>
+                            <p class="text-white-50">Resume Builder &mdash; CSC 3100 Spring 2026</p>
+                        </div>
+
+                        <!-- 1. About This Project -->
+                        <div class="card shadow-sm mb-4">
+                            <div class="card-header fw-bold">About This Project</div>
+                            <div class="card-body">
+                                <p class="mb-0">This application was developed as part of CSC 3100 at Tennessee
+                                Technological University during the Spring 2026 semester. It was built using
+                                AI-assisted development tools under the direct oversight and authorship of the
+                                student developer. All AI-generated code was reviewed, tested, and approved by
+                                the author prior to being committed to the project repository. Development
+                                operated within the coding conventions defined in the course AGENT.md file.</p>
+                            </div>
+                        </div>
+
+                        <!-- 2. AI Tools Used in Development -->
+                        <div class="card shadow-sm mb-4">
+                            <div class="card-header fw-bold">AI Tools Used in Development</div>
+                            <div class="card-body">
+                                <table class="table table-bordered table-hover mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Tool</th>
+                                            <th scope="col">Role in This Project</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Claude Sonnet 4.6 (Anthropic)</td>
+                                            <td>Used throughout all phases to craft and refine development prompts,
+                                            reason through architectural decisions, analyze existing code, debug errors,
+                                            and review code conventions. All prompts submitted to code generation tools
+                                            were produced using Claude Sonnet 4.6.</td>
+                                        </tr>
+                                        <tr>
+                                            <td>OpenAI Codex (GPT 5.4)</td>
+                                            <td>Used as the primary code generation engine during Phase 1 of
+                                            development, receiving prompts crafted with Claude Sonnet 4.6 to produce
+                                            the initial application source files and core architecture.</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Claude Code &mdash; Local (Anthropic)</td>
+                                            <td>Used as the primary code generation engine during Phases 2 through 4
+                                            of development, replacing Codex for all subsequent feature additions, bug
+                                            fixes, and refinements. Ran locally on the developer&apos;s machine and
+                                            received prompts crafted using Claude Sonnet 4.6.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- 3. Open Source Libraries -->
+                        <div class="card shadow-sm mb-4">
+                            <div class="card-header fw-bold">Open Source Libraries</div>
+                            <div class="card-body">
+                                <table class="table table-bordered table-hover mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Library</th>
+                                            <th scope="col">License</th>
+                                            <th scope="col">How It Is Used</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><a href="https://www.electronjs.org" target="_blank"
+                                                   rel="noopener noreferrer"
+                                                   aria-label="Electron official website">Electron</a></td>
+                                            <td>MIT</td>
+                                            <td>Packages the application as a native desktop application for Windows,
+                                            macOS, and Linux. Manages the application window, lifecycle events, and
+                                            bridges the renderer process to the Node.js backend.</td>
+                                        </tr>
+                                        <tr>
+                                            <td><a href="https://expressjs.com" target="_blank"
+                                                   rel="noopener noreferrer"
+                                                   aria-label="Express official website">Express</a></td>
+                                            <td>MIT</td>
+                                            <td>Runs a local HTTP server on port 3000 that serves all API routes. Acts
+                                            as the communication bridge between the frontend JavaScript running in the
+                                            Electron renderer and the SQLite database running in Node.js.</td>
+                                        </tr>
+                                        <tr>
+                                            <td><a href="https://github.com/TryGhost/node-sqlite3" target="_blank"
+                                                   rel="noopener noreferrer"
+                                                   aria-label="SQLite3 npm package on GitHub">SQLite3</a></td>
+                                            <td>MIT</td>
+                                            <td>Provides the local file-based database that stores all resume data
+                                            including profile information, jobs, responsibilities, education, skills,
+                                            certifications, and awards. All data persists in
+                                            <code>resume.db</code> on the user&apos;s machine.</td>
+                                        </tr>
+                                        <tr>
+                                            <td><a href="https://github.com/uuidjs/uuid" target="_blank"
+                                                   rel="noopener noreferrer"
+                                                   aria-label="UUID npm package on GitHub">UUID</a></td>
+                                            <td>MIT</td>
+                                            <td>Generates unique identifiers for every database record created in the
+                                            application. Used as primary keys across all tables.</td>
+                                        </tr>
+                                        <tr>
+                                            <td><a href="https://github.com/motdotla/dotenv" target="_blank"
+                                                   rel="noopener noreferrer"
+                                                   aria-label="Dotenv npm package on GitHub">Dotenv</a></td>
+                                            <td>BSD-2-Clause</td>
+                                            <td>Loads the <code>GEMINI_API_KEY</code> and other configuration values
+                                            from the local <code>.env</code> file into Node.js environment variables
+                                            at startup. Keeps sensitive credentials out of the source code.</td>
+                                        </tr>
+                                        <tr>
+                                            <td><a href="https://getbootstrap.com" target="_blank"
+                                                   rel="noopener noreferrer"
+                                                   aria-label="Bootstrap official website">Bootstrap 5</a></td>
+                                            <td>MIT</td>
+                                            <td>Provides all layout, spacing, typography, and component styles
+                                            throughout the application. Used exclusively through utility classes with
+                                            no custom CSS. Stored locally and copied from
+                                            <code>node_modules</code> by <code>postinstall.js</code>.</td>
+                                        </tr>
+                                        <tr>
+                                            <td><a href="https://sweetalert2.github.io" target="_blank"
+                                                   rel="noopener noreferrer"
+                                                   aria-label="SweetAlert2 official website">SweetAlert2</a></td>
+                                            <td>MIT</td>
+                                            <td>Provides all user-facing modal dialogs and alerts throughout the
+                                            application including success confirmations, error messages, and
+                                            destructive action confirmations. Stored locally and copied from
+                                            <code>node_modules</code> by <code>postinstall.js</code>.</td>
+                                        </tr>
+                                        <tr>
+                                            <td><a href="https://fontawesome.com" target="_blank"
+                                                   rel="noopener noreferrer"
+                                                   aria-label="FontAwesome official website">FontAwesome Free</a></td>
+                                            <td>Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT</td>
+                                            <td>Provides all icons used throughout the sidebar navigation, dashboard
+                                            cards, and buttons. Stored locally including webfont files and copied from
+                                            <code>node_modules</code> by <code>postinstall.js</code>.</td>
+                                        </tr>
+                                        <tr>
+                                            <td><a href="https://github.com/parallax/jsPDF" target="_blank"
+                                                   rel="noopener noreferrer"
+                                                   aria-label="jsPDF on GitHub">jsPDF</a></td>
+                                            <td>MIT</td>
+                                            <td>Generates the downloadable PDF resume entirely in the browser using
+                                            the user&apos;s stored data. Produces a document matching the template
+                                            layout with two-column structure, Helvetica typography, and proper text
+                                            wrapping. Stored locally and copied from <code>node_modules</code> by
+                                            <code>postinstall.js</code>.</td>
+                                        </tr>
+                                        <tr>
+                                            <td><a href="https://ai.google.dev" target="_blank"
+                                                   rel="noopener noreferrer"
+                                                   aria-label="Google AI developer site">Google Gemini 2.5 Flash API</a></td>
+                                            <td>Google API Terms of Service</td>
+                                            <td>Powers the AI resume feedback feature. Called server-side from Express
+                                            using a user-supplied API key loaded from the <code>.env</code> file. The
+                                            key is never exposed to the frontend renderer process.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- 4. Course Context -->
+                        <div class="card shadow-sm mb-4">
+                            <div class="card-header fw-bold">Course Context</div>
+                            <div class="card-body">
+                                <p class="mb-0">This project was developed within the academic parameters of CSC 3100
+                                at Tennessee Technological University. The AGENT.md conventions file governing the
+                                project defined coding standards including Hungarian notation with camelCase,
+                                async/await patterns, RESTful API design, input validation using the
+                                <code>blnError</code> and <code>strMessage</code> pattern, WCAG 2.1 accessibility
+                                standards, Bootstrap 5 utility class usage, and local dependency management rules.
+                                All AI-generated code was reviewed against these conventions and approved by the
+                                student author before being committed to the repository.</p>
+                            </div>
+                        </div>
+
+                        <!-- 5. How to Run This Application -->
+                        <div class="card shadow-sm mb-4">
+                            <div class="card-header fw-bold">How to Run This Application</div>
+                            <div class="card-body">
+                                <ol class="list-group list-group-numbered mb-0">
+                                    <li class="list-group-item">
+                                        <strong>Prerequisites</strong> &mdash; Node.js v18 or higher must be
+                                        installed. Download from
+                                        <a href="https://nodejs.org" target="_blank" rel="noopener noreferrer"
+                                           aria-label="Node.js download page">https://nodejs.org</a>.
+                                    </li>
+                                    <li class="list-group-item">
+                                        <strong>Install dependencies</strong> &mdash; Run
+                                        <code>npm install</code> in the project root. This installs all packages
+                                        and triggers <code>postinstall.js</code> which copies Bootstrap,
+                                        SweetAlert2, FontAwesome, and jsPDF into their local directories
+                                        automatically.
+                                    </li>
+                                    <li class="list-group-item">
+                                        <strong>Configure environment</strong> &mdash; Copy
+                                        <code>.env.example</code> to <code>.env</code>. Open the new
+                                        <code>.env</code> file and replace
+                                        <code>your_gemini_api_key_here</code> with a valid Gemini API key. A
+                                        free key can be obtained at
+                                        <a href="https://aistudio.google.com/apikey" target="_blank"
+                                           rel="noopener noreferrer"
+                                           aria-label="Google AI Studio API key page">https://aistudio.google.com/apikey</a>
+                                        &mdash; select the Gemini 2.5 Flash model.
+                                    </li>
+                                    <li class="list-group-item">
+                                        <strong>Run the application</strong> &mdash; Run
+                                        <code>npm start</code> in the project root.
+                                    </li>
+                                    <li class="list-group-item">
+                                        <strong>Run in development mode</strong> &mdash; Run
+                                        <code>npm run dev</code> to launch with DevTools open for debugging.
+                                    </li>
+                                    <li class="list-group-item">
+                                        <strong>Notes</strong> &mdash; <code>resume.db</code> is created
+                                        automatically on first run. The <code>.env</code> file must never be
+                                        committed to source control. If port 3000 is already in use change
+                                        <code>HTTP_PORT</code> in <code>.env</code>.
+                                    </li>
+                                </ol>
+                            </div>
+                        </div>
+
+                        <!-- 6. Transferring to Another Machine -->
+                        <div class="card shadow-sm mb-4">
+                            <div class="card-header fw-bold">Transferring to Another Machine</div>
+                            <div class="card-body">
+                                <p>The project can be zipped and run on a separate device. The zip must exclude
+                                the <code>.git</code> folder and the <code>node_modules</code> folder. On the
+                                receiving machine follow these steps:</p>
+                                <ol class="list-group list-group-numbered mb-3">
+                                    <li class="list-group-item">
+                                        Install Node.js from
+                                        <a href="https://nodejs.org" target="_blank" rel="noopener noreferrer"
+                                           aria-label="Node.js download page">https://nodejs.org</a>
+                                    </li>
+                                    <li class="list-group-item">Unzip the project folder</li>
+                                    <li class="list-group-item">
+                                        Open a terminal in the project folder and run <code>npm install</code>
+                                    </li>
+                                    <li class="list-group-item">
+                                        Create a <code>.env</code> file in the project root and add a valid
+                                        <code>GEMINI_API_KEY</code> &mdash; see <code>.env.example</code> for
+                                        the required format
+                                    </li>
+                                    <li class="list-group-item">Run <code>npm start</code></li>
+                                </ol>
+                                <p class="mb-0 text-muted small">The <code>resume.db</code> file can optionally
+                                be included in the zip if you wish to transfer existing resume data to the new
+                                machine. If it is not included a fresh empty database will be created
+                                automatically on first run.</p>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+            <!-- /divCredits -->
+
+
         </div>
         <!-- /container-fluid -->
     </div>
@@ -819,3 +1119,18 @@
 <script src="js/app.js"></script>
 </body>
 </html>
+<!--
+============================================================
+This file was generated through a collaborative process
+combining Claude Sonnet 4.6 (Anthropic) and AI-assisted
+code generation tools across multiple development phases.
+Prompts used to produce this code were crafted using
+Claude Sonnet 4.6 and were designed to operate within
+the parameters covered in CSC 3100 during the Spring
+Semester of 2026, referencing the course AGENT.md
+conventions and class code examples developed throughout
+the semester. The author reviewed, oversaw, and approved
+all generated code prior to final commit and push to
+the project repository.
+============================================================
+-->
