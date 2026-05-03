@@ -17,6 +17,7 @@
     "dotenv": "^17.2.3",
     "electron": "^38.7.0",
     "express": "^5.1.0",
+    "jspdf": "^2.5.2",
     "sqlite3": "^5.1.7",
     "sweetalert2": "^11.23.0",
     "uuid": "^13.0.0"
