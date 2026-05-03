@@ -2,10 +2,10 @@
 // CONSTANTS
 // ============================================================
 
-// Base URL for all fetch calls — must match the HTTP_PORT in server.js
+// Base URL for all fetch calls — must match HTTP_PORT in server.js
 const strBaseUrl = 'http://localhost:3000'
 
-// Mutable state variables that track which record is currently being edited
+// Mutable state: tracks which record is currently being edited
 // in each section's form.  An empty string means "add mode".
 let strEditingJobID = ''
 let strEditingSkillID = ''
@@ -13,15 +13,39 @@ let strEditingAwardID = ''
 let strEditingCertificationID = ''
 let strEditingEducationID = ''
 
+// In-memory array for responsibilities added before a new job is saved.
+// The array is submitted to the API job-by-job after the job record is
+// created so that each responsibility is tied to the correct strJobID.
+let arrPendingResponsibilities = []
+
 // ============================================================
 // SECTION: Sidebar Toggle
 // ============================================================
 
-// Clicking the hamburger button toggles the sidebar visibility.
-// Bootstrap's d-none class is toggled so the sidebar collapses
-// and the content area expands to fill the freed space.
+// Clicking the hamburger button collapses the sidebar to an icon-only
+// strip (65px) or expands it back to full width (250px).
+// The "toggled" class marks the collapsed state.
+// All .sidebar-text spans are hidden in the collapsed state so only
+// the FontAwesome icons remain visible.  No jQuery — vanilla JS only.
 document.querySelector('#btnSidebarToggle').addEventListener('click', () => {
-    document.querySelector('#divSidebar').classList.toggle('d-none')
+    const objSidebar = document.querySelector('#divSidebar')
+    const blnIsCollapsed = objSidebar.classList.contains('toggled')
+
+    if(blnIsCollapsed){
+        // Expand sidebar back to full width
+        objSidebar.classList.remove('toggled')
+        objSidebar.style.width = '250px'
+        document.querySelectorAll('.sidebar-text').forEach((objEl) => {
+            objEl.classList.remove('d-none')
+        })
+    } else {
+        // Collapse to icon-only strip
+        objSidebar.classList.add('toggled')
+        objSidebar.style.width = '65px'
+        document.querySelectorAll('.sidebar-text').forEach((objEl) => {
+            objEl.classList.add('d-none')
+        })
+    }
 })
 
 // ============================================================
@@ -29,9 +53,10 @@ document.querySelector('#btnSidebarToggle').addEventListener('click', () => {
 // ============================================================
 
 // showSection hides every section then reveals only the requested one.
-// It also updates the topbar label so the user always knows where they are.
+// It also updates the topbar breadcrumb label so the user always
+// knows which section they are viewing.
 const showSection = (strSectionID, strSectionLabel) => {
-    // Complete list of all section IDs — must stay in sync with index.html
+    // Complete list of section IDs — must stay in sync with index.html
     const arrSections = [
         '#divDashboard',
         '#divProfile',
@@ -44,7 +69,7 @@ const showSection = (strSectionID, strSectionLabel) => {
     ]
 
     // Hide every section first
-    arrSections.forEach(strSection => {
+    arrSections.forEach((strSection) => {
         document.querySelector(strSection).classList.add('d-none')
     })
 
@@ -53,13 +78,40 @@ const showSection = (strSectionID, strSectionLabel) => {
 
     // Update the topbar breadcrumb label
     document.querySelector('#spnCurrentSection').innerText = strSectionLabel
+
+    // Highlight the active nav button — remove from all then set on the matching one
+    const arrNavBtns = [
+        '#btnNavDashboard', '#btnNavProfile', '#btnNavEducation', '#btnNavJobs',
+        '#btnNavSkills', '#btnNavCertifications', '#btnNavAwards',
+        '#btnNavResumeBuilder'
+    ]
+    arrNavBtns.forEach((strBtnID) => {
+        const elBtn = document.querySelector(strBtnID)
+        if(elBtn) elBtn.classList.remove('nav-active')
+    })
+    const objSectionNavMap = {
+        '#divDashboard':     '#btnNavDashboard',
+        '#divProfile':       '#btnNavProfile',
+        '#divEducation':     '#btnNavEducation',
+        '#divJobs':          '#btnNavJobs',
+        '#divSkills':        '#btnNavSkills',
+        '#divCertifications':'#btnNavCertifications',
+        '#divAwards':        '#btnNavAwards',
+        '#divResumeBuilder': '#btnNavResumeBuilder'
+    }
+    const strActiveBtn = objSectionNavMap[strSectionID]
+    if(strActiveBtn){
+        const elActive = document.querySelector(strActiveBtn)
+        if(elActive) elActive.classList.add('nav-active')
+    }
 }
 
 // ============================================================
 // NAVBAR EVENT LISTENERS
 // ============================================================
 
-// Each sidebar button reveals its corresponding section and loads fresh data.
+// Each sidebar button reveals its corresponding section and loads
+// fresh data from the API.
 
 document.querySelector('#btnNavDashboard').addEventListener('click', async () => {
     showSection('#divDashboard', 'Dashboard')
@@ -105,59 +157,646 @@ document.querySelector('#btnNavResumeBuilder').addEventListener('click', async (
 // SECTION: Dashboard
 // ============================================================
 
-// loadDashboard fetches all five resource counts in parallel using
-// Promise.all so the dashboard refreshes in a single round-trip.
+// loadDashboard fetches all six resource collections in parallel and
+// passes each array to its dedicated renderDashboard* function.
+// Called on every btnNavDashboard click so the view is always current.
 const loadDashboard = async () => {
     try {
-        // Fire all five GET requests simultaneously
-        const [objJobs, objSkills, objAwards, objCerts, objEdu] = await Promise.all([
+        const [objProfileRes, objEduRes, objJobsRes, objSkillsRes, objCertsRes, objAwardsRes] = await Promise.all([
+            fetch(`${strBaseUrl}/api/profile`),
+            fetch(`${strBaseUrl}/api/education`),
             fetch(`${strBaseUrl}/api/jobs`),
             fetch(`${strBaseUrl}/api/skills`),
-            fetch(`${strBaseUrl}/api/awards`),
             fetch(`${strBaseUrl}/api/certifications`),
-            fetch(`${strBaseUrl}/api/education`)
+            fetch(`${strBaseUrl}/api/awards`)
         ])
 
-        // Bail out early if any request failed
         if(
-            objJobs.ok == false ||
-            objSkills.ok == false ||
-            objAwards.ok == false ||
-            objCerts.ok == false ||
-            objEdu.ok == false
+            objProfileRes.ok == false || objEduRes.ok == false || objJobsRes.ok == false ||
+            objSkillsRes.ok == false  || objCertsRes.ok == false || objAwardsRes.ok == false
         ){
             throw new Error('Failed to load dashboard data')
         }
 
-        // Parse all five response bodies
-        const arrJobs = await objJobs.json()
-        const arrSkills = await objSkills.json()
-        const arrAwards = await objAwards.json()
-        const arrCerts = await objCerts.json()
-        const arrEdu = await objEdu.json()
+        const arrProfile = await objProfileRes.json()
+        const arrEdu     = await objEduRes.json()
+        const arrJobs    = await objJobsRes.json()
+        const arrSkills  = await objSkillsRes.json()
+        const arrCerts   = await objCertsRes.json()
+        const arrAwards  = await objAwardsRes.json()
 
-        // Update every stat card count
-        document.querySelector('#pJobCount').innerText = arrJobs.length
-        document.querySelector('#pSkillCount').innerText = arrSkills.length
-        document.querySelector('#pAwardCount').innerText = arrAwards.length
-        document.querySelector('#pCertCount').innerText = arrCerts.length
-        document.querySelector('#pEduCount').innerText = arrEdu.length
+        renderDashboardProfile(arrProfile)
+        renderDashboardEducation(arrEdu)
+        renderDashboardJobs(arrJobs)
+        renderDashboardSkills(arrSkills)
+        renderDashboardCertifications(arrCerts)
+        renderDashboardAwards(arrAwards)
 
     } catch(objError) {
-        Swal.fire({
-            title: "Error",
-            text: "Failed to load dashboard data",
-            icon: "error"
-        })
+        Swal.fire({title: "Error", text: "Failed to load dashboard data", icon: "error"})
     }
 }
+
+// renderDashboardProfile populates divDashProfile with the name header and
+// three-column contact row matching the resume template layout.
+const renderDashboardProfile = (arrProfile) => {
+    const elCard = document.querySelector('#divDashProfile')
+    if(arrProfile.length < 1){
+        elCard.innerHTML = `
+            <div class="card-body p-4 text-center text-muted fst-italic">
+                No profile information added yet \u2014 click to set up your contact details
+            </div>`
+        return
+    }
+    const objP = arrProfile[0]
+    const strLinkedIn = objP.strLinkedIn && objP.strLinkedIn.length > 0 ? `<div class="small">${objP.strLinkedIn}</div>` : ''
+    const strGitHub   = objP.strGitHub   && objP.strGitHub.length   > 0 ? `<div class="small">${objP.strGitHub}</div>` : ''
+    const strEmail    = objP.strEmail    && objP.strEmail.length    > 0 ? `<div class="small">${objP.strEmail}</div>` : ''
+    const strPhone    = objP.strPhone    && objP.strPhone.length    > 0 ? `<div class="small">${objP.strPhone}</div>` : ''
+    const strWebsite  = objP.strWebsite  && objP.strWebsite.length  > 0 ? `<div class="small">${objP.strWebsite}</div>` : ''
+    elCard.innerHTML = `
+        <div class="card-body p-4">
+            <p class="fs-5 fw-bold text-center mb-2">${objP.strFullName}</p>
+            <div class="row mb-1">
+                <div class="col-4 text-start">${strLinkedIn}${strGitHub}</div>
+                <div class="col-4 text-center">${strEmail}</div>
+                <div class="col-4 text-end">${strPhone}${strWebsite}</div>
+            </div>
+            <hr class="my-1">
+        </div>`
+}
+
+// renderDashboardEducation populates divDashEducation using the two-column
+// date-left / institution-right layout from the resume template.
+const renderDashboardEducation = (arrEdu) => {
+    const elCard = document.querySelector('#divDashEducation')
+    if(arrEdu.length < 1){
+        elCard.innerHTML = `
+            <div class="card-body p-4">
+                <p class="fw-bold border-bottom pb-1 mb-2">Education</p>
+                <p class="text-muted fst-italic mb-0">No education added yet \u2014 click to add your first entry</p>
+            </div>`
+        return
+    }
+    let strEntries = ''
+    arrEdu.forEach((objEdu) => {
+        const strEnd   = objEdu.strEndDate && objEdu.strEndDate.length > 0 ? objEdu.strEndDate : 'Present'
+        const strField = objEdu.strFieldOfStudy && objEdu.strFieldOfStudy.length > 0 ? ` in ${objEdu.strFieldOfStudy}` : ''
+        strEntries += `
+            <div class="row mb-2">
+                <div class="col-3"><small class="text-muted fst-italic">${strEnd}</small></div>
+                <div class="col-9">
+                    <span class="fw-bold small">${objEdu.strInstitutionName}</span>
+                    <div class="small text-muted">${objEdu.strDegree}${strField}</div>
+                </div>
+            </div>`
+    })
+    elCard.innerHTML = `
+        <div class="card-body p-4">
+            <p class="fw-bold border-bottom pb-1 mb-2">Education</p>
+            ${strEntries}
+        </div>`
+}
+
+// renderDashboardJobs populates divDashJobs with role, company, date range,
+// and responsibilities per the resume template two-column layout.
+const renderDashboardJobs = (arrJobs) => {
+    const elCard = document.querySelector('#divDashJobs')
+    if(arrJobs.length < 1){
+        elCard.innerHTML = `
+            <div class="card-body p-4">
+                <p class="fw-bold border-bottom pb-1 mb-2">Work Experience</p>
+                <p class="text-muted fst-italic mb-0">No work experience added yet \u2014 click to add your first job</p>
+            </div>`
+        return
+    }
+    let strEntries = ''
+    arrJobs.forEach((objJob) => {
+        const strEnd      = objJob.strEndDate && objJob.strEndDate.length > 0 ? objJob.strEndDate : 'Present'
+        const strRange    = `${objJob.strStartDate || ''} \u2013 ${strEnd}`
+        const arrResp     = objJob.arrResponsibilities || []
+        const strRespHtml = arrResp.length > 0
+            ? `<ul class="mb-0 ps-3">${arrResp.map((r) => `<li class="small">${r.strDescription}</li>`).join('')}</ul>`
+            : ''
+        strEntries += `
+            <div class="row mb-3">
+                <div class="col-3"><small class="text-muted fst-italic">${strRange}</small></div>
+                <div class="col-9">
+                    <span class="fw-bold small">${objJob.strRoleName}</span>
+                    <span class="text-muted small ms-2">${objJob.strCompanyName}</span>
+                    ${strRespHtml}
+                </div>
+            </div>`
+    })
+    elCard.innerHTML = `
+        <div class="card-body p-4">
+            <p class="fw-bold border-bottom pb-1 mb-2">Work Experience</p>
+            ${strEntries}
+        </div>`
+}
+
+// renderDashboardSkills populates divDashSkills with a comma-separated
+// inline list of skill names matching the resume template skills line.
+const renderDashboardSkills = (arrSkills) => {
+    const elCard = document.querySelector('#divDashSkills')
+    if(arrSkills.length < 1){
+        elCard.innerHTML = `
+            <div class="card-body p-4">
+                <p class="fw-bold border-bottom pb-1 mb-2">Skills</p>
+                <p class="text-muted fst-italic mb-0">No skills added yet \u2014 click to add your skills</p>
+            </div>`
+        return
+    }
+    elCard.innerHTML = `
+        <div class="card-body p-4">
+            <p class="fw-bold border-bottom pb-1 mb-2">Skills</p>
+            <p class="mb-0 small">${arrSkills.map((s) => s.strSkillName).join(', ')}</p>
+        </div>`
+}
+
+// renderDashboardCertifications populates divDashCertifications with name,
+// organization, and date in the resume template certification format.
+const renderDashboardCertifications = (arrCerts) => {
+    const elCard = document.querySelector('#divDashCertifications')
+    if(arrCerts.length < 1){
+        elCard.innerHTML = `
+            <div class="card-body p-4">
+                <p class="fw-bold border-bottom pb-1 mb-2">Certifications</p>
+                <p class="text-muted fst-italic mb-0">No certifications added yet \u2014 click to add your first certification</p>
+            </div>`
+        return
+    }
+    let strEntries = ''
+    arrCerts.forEach((objCert) => {
+        const strDate = objCert.strDateEarned && objCert.strDateEarned.length > 0
+            ? `<small class="text-muted fst-italic ms-2">${objCert.strDateEarned}</small>` : ''
+        strEntries += `
+            <div class="mb-1 small">
+                <span class="fw-bold">${objCert.strCertificationName}</span>
+                <span class="text-muted ms-2">${objCert.strIssuingOrganization || ''}</span>
+                ${strDate}
+            </div>`
+    })
+    elCard.innerHTML = `
+        <div class="card-body p-4">
+            <p class="fw-bold border-bottom pb-1 mb-2">Certifications</p>
+            ${strEntries}
+        </div>`
+}
+
+// renderDashboardAwards populates divDashAwards with award name, date, and
+// optional description per the resume template awards format.
+const renderDashboardAwards = (arrAwards) => {
+    const elCard = document.querySelector('#divDashAwards')
+    if(arrAwards.length < 1){
+        elCard.innerHTML = `
+            <div class="card-body p-4">
+                <p class="fw-bold border-bottom pb-1 mb-2">Awards</p>
+                <p class="text-muted fst-italic mb-0">No awards added yet \u2014 click to add your first award</p>
+            </div>`
+        return
+    }
+    let strEntries = ''
+    arrAwards.forEach((objAward) => {
+        const strDate = objAward.strAwardDate && objAward.strAwardDate.length > 0
+            ? `<small class="text-muted fst-italic ms-2">${objAward.strAwardDate}</small>` : ''
+        const strDesc = objAward.strDescription && objAward.strDescription.length > 0
+            ? `<div class="small text-muted">${objAward.strDescription}</div>` : ''
+        strEntries += `
+            <div class="mb-2 small">
+                <span class="fw-bold">${objAward.strAwardName}</span>${strDate}
+                ${strDesc}
+            </div>`
+    })
+    elCard.innerHTML = `
+        <div class="card-body p-4">
+            <p class="fw-bold border-bottom pb-1 mb-2">Awards</p>
+            ${strEntries}
+        </div>`
+}
+
+// Click any dashboard card to navigate directly to that editing section.
+// loadDashboard is re-called on every btnNavDashboard click, so the
+// listeners only need to set up navigation — they never cache stale data.
+document.querySelector('#divDashProfile').addEventListener('click', async () => {
+    showSection('#divProfile', 'Profile')
+    await loadProfile()
+})
+document.querySelector('#divDashEducation').addEventListener('click', async () => {
+    showSection('#divEducation', 'Education')
+    await loadEducation()
+})
+document.querySelector('#divDashJobs').addEventListener('click', async () => {
+    showSection('#divJobs', 'Jobs')
+    await loadJobs()
+})
+document.querySelector('#divDashSkills').addEventListener('click', async () => {
+    showSection('#divSkills', 'Skills')
+    await loadSkills()
+})
+document.querySelector('#divDashCertifications').addEventListener('click', async () => {
+    showSection('#divCertifications', 'Certifications')
+    await loadCertifications()
+})
+document.querySelector('#divDashAwards').addEventListener('click', async () => {
+    showSection('#divAwards', 'Awards')
+    await loadAwards()
+})
+
+// ============================================================
+// SECTION: Dashboard Overlay Modals
+// Each modal populates its content when it opens, then offers
+// per-record Edit buttons and a bottom "Manage X" button that
+// closes the modal and navigates directly to that section.
+// ============================================================
+
+// Helper: hide any open Bootstrap modal and fire a callback after it closes
+const hideModalThen = (strModalID, fnCallback) => {
+    const elModal   = document.querySelector(strModalID)
+    const objModal  = bootstrap.Modal.getInstance(elModal)
+    if(objModal){
+        elModal.addEventListener('hidden.bs.modal', fnCallback, {once: true})
+        objModal.hide()
+    } else {
+        fnCallback()
+    }
+}
+
+// ---- Profile modal ----
+document.querySelector('#modalProfile').addEventListener('show.bs.modal', async () => {
+    try {
+        const objRes     = await fetch(`${strBaseUrl}/api/profile`)
+        const arrProfile = await objRes.json()
+        const elContent  = document.querySelector('#divModalProfileContent')
+
+        if(arrProfile.length < 1){
+            elContent.innerHTML = '<p class="text-muted fst-italic">No profile saved yet. Click "Edit Profile" to add one.</p>'
+            return
+        }
+
+        const objP = arrProfile[0]
+        const arrRows = [
+            {label: 'Full Name',  value: objP.strFullName},
+            {label: 'Email',      value: objP.strEmail},
+            {label: 'Phone',      value: objP.strPhone},
+            {label: 'LinkedIn',   value: objP.strLinkedIn},
+            {label: 'GitHub',     value: objP.strGitHub},
+            {label: 'Website',    value: objP.strWebsite}
+        ].filter((objRow) => objRow.value && objRow.value.length > 0)
+
+        elContent.innerHTML = arrRows.map((objRow) =>
+            `<div class="d-flex py-2 border-bottom modal-record-row">
+                <span class="text-muted me-3" style="min-width:110px">${objRow.label}</span>
+                <span class="fw-semibold">${objRow.value}</span>
+            </div>`
+        ).join('') || '<p class="text-muted fst-italic">Profile is empty.</p>'
+
+    } catch(objErr) {
+        document.querySelector('#divModalProfileContent').innerHTML =
+            '<p class="text-danger">Failed to load profile.</p>'
+    }
+})
+
+document.querySelector('#btnModalGoProfile').addEventListener('click', () => {
+    hideModalThen('#modalProfile', async () => {
+        showSection('#divProfile', 'Profile')
+        await loadProfile()
+    })
+})
+
+// ---- Education modal ----
+document.querySelector('#modalEducation').addEventListener('show.bs.modal', async () => {
+    try {
+        const objRes       = await fetch(`${strBaseUrl}/api/education`)
+        const arrEducation = await objRes.json()
+        const elContent    = document.querySelector('#divModalEducationContent')
+
+        if(arrEducation.length < 1){
+            elContent.innerHTML = '<p class="text-muted fst-italic">No education records yet. Click "Manage Education" to add one.</p>'
+            return
+        }
+
+        elContent.innerHTML = arrEducation.map((objEdu) => {
+            const strEnd = objEdu.strEndDate && objEdu.strEndDate.length > 0 ? objEdu.strEndDate : 'Present'
+            const strField = objEdu.strFieldOfStudy && objEdu.strFieldOfStudy.length > 0
+                ? ` in ${objEdu.strFieldOfStudy}` : ''
+            return `<div class="p-3 mb-3 border rounded modal-record-row">
+                <div class="d-flex justify-content-between align-items-start gap-3">
+                    <div>
+                        <p class="fw-bold mb-1">${objEdu.strInstitutionName}</p>
+                        <p class="mb-1">${objEdu.strDegree}${strField}</p>
+                        <p class="text-muted small mb-0">${objEdu.strStartDate || ''} \u2013 ${strEnd}</p>
+                    </div>
+                    <button class="btn btn-sm btn-outline-primary flex-shrink-0"
+                            data-modal-edit-edu="${objEdu.strEducationID}"
+                            type="button">Edit</button>
+                </div>
+            </div>`
+        }).join('')
+
+    } catch(objErr) {
+        document.querySelector('#divModalEducationContent').innerHTML =
+            '<p class="text-danger">Failed to load education records.</p>'
+    }
+})
+
+document.querySelector('#divModalEducationContent').addEventListener('click', (objEvent) => {
+    const objBtn = objEvent.target.closest('[data-modal-edit-edu]')
+    if(!objBtn) return
+    const strEduID = objBtn.getAttribute('data-modal-edit-edu')
+    hideModalThen('#modalEducation', async () => {
+        showSection('#divEducation', 'Education')
+        await loadEducation()
+        // Pre-populate the edit form
+        const objRes = await fetch(`${strBaseUrl}/api/education`)
+        const arrEdu = await objRes.json()
+        const objEdu = arrEdu.find((e) => e.strEducationID === strEduID)
+        if(objEdu){
+            strEditingEducationID = objEdu.strEducationID
+            document.querySelector('#txtInstitutionName').value = objEdu.strInstitutionName
+            document.querySelector('#txtDegree').value          = objEdu.strDegree
+            document.querySelector('#txtFieldOfStudy').value    = objEdu.strFieldOfStudy || ''
+            document.querySelector('#txtEduStartDate').value    = objEdu.strStartDate || ''
+            const blnAttending = !objEdu.strEndDate || objEdu.strEndDate.length < 1
+            document.querySelector('#chkCurrentlyAttending').checked  = blnAttending
+            document.querySelector('#txtEduEndDate').disabled         = blnAttending
+            document.querySelector('#txtEduEndDate').value            = blnAttending ? '' : objEdu.strEndDate
+            document.querySelector('#btnSaveEducation').innerText     = 'Update Education'
+            document.querySelector('#btnCancelEditEducation').classList.remove('d-none')
+        }
+    })
+})
+
+document.querySelector('#btnModalGoEducation').addEventListener('click', () => {
+    hideModalThen('#modalEducation', async () => {
+        showSection('#divEducation', 'Education')
+        await loadEducation()
+    })
+})
+
+// ---- Jobs modal ----
+document.querySelector('#modalJobs').addEventListener('show.bs.modal', async () => {
+    try {
+        const objRes    = await fetch(`${strBaseUrl}/api/jobs`)
+        const arrJobs   = await objRes.json()
+        const elContent = document.querySelector('#divModalJobsContent')
+
+        if(arrJobs.length < 1){
+            elContent.innerHTML = '<p class="text-muted fst-italic">No jobs yet. Click "Manage Jobs" to add one.</p>'
+            return
+        }
+
+        elContent.innerHTML = arrJobs.map((objJob) => {
+            const strEnd = objJob.strEndDate && objJob.strEndDate.length > 0 ? objJob.strEndDate : 'Present'
+            const arrResp = objJob.arrResponsibilities || []
+            const strRespHtml = arrResp.length > 0
+                ? `<ul class="mb-0 mt-2 small">${arrResp.map((r) => `<li>${r.strDescription}</li>`).join('')}</ul>`
+                : ''
+            return `<div class="p-3 mb-3 border rounded modal-record-row">
+                <div class="d-flex justify-content-between align-items-start gap-3">
+                    <div>
+                        <p class="fw-bold mb-0">${objJob.strRoleName}</p>
+                        <p class="text-muted mb-1">${objJob.strCompanyName}</p>
+                        <p class="text-muted small mb-0">${objJob.strStartDate || ''} \u2013 ${strEnd}</p>
+                        ${strRespHtml}
+                    </div>
+                    <button class="btn btn-sm btn-outline-primary flex-shrink-0"
+                            data-modal-edit-job="${objJob.strJobID}"
+                            type="button">Edit</button>
+                </div>
+            </div>`
+        }).join('')
+
+    } catch(objErr) {
+        document.querySelector('#divModalJobsContent').innerHTML =
+            '<p class="text-danger">Failed to load jobs.</p>'
+    }
+})
+
+document.querySelector('#divModalJobsContent').addEventListener('click', (objEvent) => {
+    const objBtn = objEvent.target.closest('[data-modal-edit-job]')
+    if(!objBtn) return
+    const strJobID = objBtn.getAttribute('data-modal-edit-job')
+    hideModalThen('#modalJobs', async () => {
+        showSection('#divJobs', 'Jobs')
+        await loadJobs()
+        const objRes  = await fetch(`${strBaseUrl}/api/jobs`)
+        const arrJobs = await objRes.json()
+        const objJob  = arrJobs.find((j) => j.strJobID === strJobID)
+        if(objJob){
+            strEditingJobID = objJob.strJobID
+            document.querySelector('#txtRoleName').value    = objJob.strRoleName
+            document.querySelector('#txtCompanyName').value = objJob.strCompanyName
+            document.querySelector('#txtStartDate').value   = objJob.strStartDate || ''
+            const blnWorking = !objJob.strEndDate || objJob.strEndDate.length < 1
+            document.querySelector('#chkCurrentlyWorking').checked = blnWorking
+            document.querySelector('#txtEndDate').disabled         = blnWorking
+            document.querySelector('#txtEndDate').value            = blnWorking ? '' : objJob.strEndDate
+            arrPendingResponsibilities = []
+            renderResponsibilityPreview()
+            document.querySelector('#btnSaveJob').innerText = 'Update Job'
+            document.querySelector('#btnCancelEditJob').classList.remove('d-none')
+        }
+    })
+})
+
+document.querySelector('#btnModalGoJobs').addEventListener('click', () => {
+    hideModalThen('#modalJobs', async () => {
+        showSection('#divJobs', 'Jobs')
+        await loadJobs()
+    })
+})
+
+// ---- Skills modal ----
+document.querySelector('#modalSkills').addEventListener('show.bs.modal', async () => {
+    try {
+        const objRes    = await fetch(`${strBaseUrl}/api/skills`)
+        const arrSkills = await objRes.json()
+        const elContent = document.querySelector('#divModalSkillsContent')
+
+        if(arrSkills.length < 1){
+            elContent.innerHTML = '<p class="text-muted fst-italic">No skills yet. Click "Manage Skills" to add one.</p>'
+            return
+        }
+
+        elContent.innerHTML = arrSkills.map((objSkill) =>
+            `<div class="p-3 mb-2 border rounded modal-record-row d-flex justify-content-between align-items-center gap-3">
+                <div>
+                    <span class="fw-semibold">${objSkill.strSkillName}</span>
+                    ${objSkill.strProficiencyLevel && objSkill.strProficiencyLevel.length > 0
+                        ? `<span class="text-muted ms-2 small">\u2014 ${objSkill.strProficiencyLevel}</span>` : ''}
+                </div>
+                <button class="btn btn-sm btn-outline-primary flex-shrink-0"
+                        data-modal-edit-skill="${objSkill.strSkillID}"
+                        type="button">Edit</button>
+            </div>`
+        ).join('')
+
+    } catch(objErr) {
+        document.querySelector('#divModalSkillsContent').innerHTML =
+            '<p class="text-danger">Failed to load skills.</p>'
+    }
+})
+
+document.querySelector('#divModalSkillsContent').addEventListener('click', (objEvent) => {
+    const objBtn = objEvent.target.closest('[data-modal-edit-skill]')
+    if(!objBtn) return
+    const strSkillID = objBtn.getAttribute('data-modal-edit-skill')
+    hideModalThen('#modalSkills', async () => {
+        showSection('#divSkills', 'Skills')
+        await loadSkills()
+        const objRes    = await fetch(`${strBaseUrl}/api/skills`)
+        const arrSkills = await objRes.json()
+        const objSkill  = arrSkills.find((s) => s.strSkillID === strSkillID)
+        if(objSkill){
+            strEditingSkillID = objSkill.strSkillID
+            document.querySelector('#txtSkillName').value        = objSkill.strSkillName
+            document.querySelector('#txtProficiencyLevel').value = objSkill.strProficiencyLevel || ''
+            document.querySelector('#btnSaveSkill').innerText    = 'Update Skill'
+            document.querySelector('#btnCancelEditSkill').classList.remove('d-none')
+        }
+    })
+})
+
+document.querySelector('#btnModalGoSkills').addEventListener('click', () => {
+    hideModalThen('#modalSkills', async () => {
+        showSection('#divSkills', 'Skills')
+        await loadSkills()
+    })
+})
+
+// ---- Certifications modal ----
+document.querySelector('#modalCertifications').addEventListener('show.bs.modal', async () => {
+    try {
+        const objRes    = await fetch(`${strBaseUrl}/api/certifications`)
+        const arrCerts  = await objRes.json()
+        const elContent = document.querySelector('#divModalCertsContent')
+
+        if(arrCerts.length < 1){
+            elContent.innerHTML = '<p class="text-muted fst-italic">No certifications yet. Click "Manage Certifications" to add one.</p>'
+            return
+        }
+
+        elContent.innerHTML = arrCerts.map((objCert) =>
+            `<div class="p-3 mb-2 border rounded modal-record-row d-flex justify-content-between align-items-center gap-3">
+                <div>
+                    <p class="fw-bold mb-0">${objCert.strCertificationName}</p>
+                    <p class="text-muted small mb-0">
+                        ${objCert.strIssuingOrganization || ''}
+                        ${objCert.strDateEarned && objCert.strDateEarned.length > 0
+                            ? ' \u00b7 ' + objCert.strDateEarned : ''}
+                    </p>
+                </div>
+                <button class="btn btn-sm btn-outline-primary flex-shrink-0"
+                        data-modal-edit-cert="${objCert.strCertificationID}"
+                        type="button">Edit</button>
+            </div>`
+        ).join('')
+
+    } catch(objErr) {
+        document.querySelector('#divModalCertsContent').innerHTML =
+            '<p class="text-danger">Failed to load certifications.</p>'
+    }
+})
+
+document.querySelector('#divModalCertsContent').addEventListener('click', (objEvent) => {
+    const objBtn = objEvent.target.closest('[data-modal-edit-cert]')
+    if(!objBtn) return
+    const strCertID = objBtn.getAttribute('data-modal-edit-cert')
+    hideModalThen('#modalCertifications', async () => {
+        showSection('#divCertifications', 'Certifications')
+        await loadCertifications()
+        const objRes   = await fetch(`${strBaseUrl}/api/certifications`)
+        const arrCerts = await objRes.json()
+        const objCert  = arrCerts.find((c) => c.strCertificationID === strCertID)
+        if(objCert){
+            strEditingCertificationID = objCert.strCertificationID
+            document.querySelector('#txtCertificationName').value   = objCert.strCertificationName
+            document.querySelector('#txtIssuingOrganization').value = objCert.strIssuingOrganization || ''
+            document.querySelector('#txtDateEarned').value          = objCert.strDateEarned || ''
+            document.querySelector('#btnSaveCertification').innerText = 'Update Certification'
+            document.querySelector('#btnCancelEditCertification').classList.remove('d-none')
+        }
+    })
+})
+
+document.querySelector('#btnModalGoCerts').addEventListener('click', () => {
+    hideModalThen('#modalCertifications', async () => {
+        showSection('#divCertifications', 'Certifications')
+        await loadCertifications()
+    })
+})
+
+// ---- Awards modal ----
+document.querySelector('#modalAwards').addEventListener('show.bs.modal', async () => {
+    try {
+        const objRes    = await fetch(`${strBaseUrl}/api/awards`)
+        const arrAwards = await objRes.json()
+        const elContent = document.querySelector('#divModalAwardsContent')
+
+        if(arrAwards.length < 1){
+            elContent.innerHTML = '<p class="text-muted fst-italic">No awards yet. Click "Manage Awards" to add one.</p>'
+            return
+        }
+
+        elContent.innerHTML = arrAwards.map((objAward) =>
+            `<div class="p-3 mb-2 border rounded modal-record-row d-flex justify-content-between align-items-center gap-3">
+                <div>
+                    <p class="fw-bold mb-0">${objAward.strAwardName}</p>
+                    <p class="text-muted small mb-0">
+                        ${objAward.strAwardDate && objAward.strAwardDate.length > 0
+                            ? objAward.strAwardDate : ''}
+                        ${objAward.strDescription && objAward.strDescription.length > 0
+                            ? ' \u2014 ' + objAward.strDescription : ''}
+                    </p>
+                </div>
+                <button class="btn btn-sm btn-outline-primary flex-shrink-0"
+                        data-modal-edit-award="${objAward.strAwardID}"
+                        type="button">Edit</button>
+            </div>`
+        ).join('')
+
+    } catch(objErr) {
+        document.querySelector('#divModalAwardsContent').innerHTML =
+            '<p class="text-danger">Failed to load awards.</p>'
+    }
+})
+
+document.querySelector('#divModalAwardsContent').addEventListener('click', (objEvent) => {
+    const objBtn = objEvent.target.closest('[data-modal-edit-award]')
+    if(!objBtn) return
+    const strAwardID = objBtn.getAttribute('data-modal-edit-award')
+    hideModalThen('#modalAwards', async () => {
+        showSection('#divAwards', 'Awards')
+        await loadAwards()
+        const objRes    = await fetch(`${strBaseUrl}/api/awards`)
+        const arrAwards = await objRes.json()
+        const objAward  = arrAwards.find((a) => a.strAwardID === strAwardID)
+        if(objAward){
+            strEditingAwardID = objAward.strAwardID
+            document.querySelector('#txtAwardName').value        = objAward.strAwardName
+            document.querySelector('#txtAwardDate').value        = objAward.strAwardDate || ''
+            document.querySelector('#txtAwardDescription').value = objAward.strDescription || ''
+            document.querySelector('#btnSaveAward').innerText    = 'Update Award'
+            document.querySelector('#btnCancelEditAward').classList.remove('d-none')
+        }
+    })
+})
+
+document.querySelector('#btnModalGoAwards').addEventListener('click', () => {
+    hideModalThen('#modalAwards', async () => {
+        showSection('#divAwards', 'Awards')
+        await loadAwards()
+    })
+})
 
 // ============================================================
 // SECTION: Profile
 // ============================================================
 
 // loadProfile fetches the profile record and pre-populates the form
-// if one already exists.  If the database is empty the form stays blank.
+// when one already exists.  If the database has no profile yet the
+// form stays blank and btnSaveProfile will call POST.
 const loadProfile = async () => {
     try {
         const objResponse = await fetch(`${strBaseUrl}/api/profile`)
@@ -272,21 +911,37 @@ document.querySelector('#btnSaveProfile').addEventListener('click', async () => 
 // SECTION: Education
 // ============================================================
 
-// resetEducationForm clears all education form inputs and returns
-// the save button text to its default "Save Education" label.
+// resetEducationForm clears all education form fields, unchecks the
+// currently-attending checkbox, re-enables the end date input, and
+// returns the button label to its default state.
 const resetEducationForm = () => {
     document.querySelector('#txtInstitutionName').value = ''
     document.querySelector('#txtDegree').value = ''
     document.querySelector('#txtFieldOfStudy').value = ''
     document.querySelector('#txtEduStartDate').value = ''
     document.querySelector('#txtEduEndDate').value = ''
+    document.querySelector('#txtEduEndDate').disabled = false
+    document.querySelector('#chkCurrentlyAttending').checked = false
     document.querySelector('#btnSaveEducation').innerText = 'Save Education'
     document.querySelector('#btnCancelEditEducation').classList.add('d-none')
     strEditingEducationID = ''
 }
 
-// loadEducation fetches all education records and renders them
-// as cards in divEducationList.
+// chkCurrentlyAttending disables and clears txtEduEndDate when checked,
+// re-enables it when unchecked.  Cards and resume output will display
+// "Present" when strEndDate is empty.
+document.querySelector('#chkCurrentlyAttending').addEventListener('change', () => {
+    const objEndDate = document.querySelector('#txtEduEndDate')
+    if(document.querySelector('#chkCurrentlyAttending').checked){
+        objEndDate.value = ''
+        objEndDate.disabled = true
+    } else {
+        objEndDate.disabled = false
+    }
+})
+
+// loadEducation fetches all education records and renders them as cards
+// in divEducationList.  An empty-state message is shown when none exist.
 const loadEducation = async () => {
     try {
         const objResponse = await fetch(`${strBaseUrl}/api/education`)
@@ -311,14 +966,14 @@ const loadEducation = async () => {
 
         // Build one card per education record
         arrEducation.forEach((objEducation) => {
-            // Display end date or "Present" when the end date is empty
+            // Display "Present" when the end date is absent
             const strDisplayEnd = objEducation.strEndDate && objEducation.strEndDate.length > 0
                 ? objEducation.strEndDate
                 : 'Present'
 
             // Show field of study only when one was provided
             const strFieldDisplay = objEducation.strFieldOfStudy && objEducation.strFieldOfStudy.length > 0
-                ? ` — ${objEducation.strFieldOfStudy}`
+                ? ` \u2014 ${objEducation.strFieldOfStudy}`
                 : ''
 
             document.querySelector('#divEducationList').innerHTML += `
@@ -328,9 +983,9 @@ const loadEducation = async () => {
                             <div>
                                 <h3 class="h5 mb-1">${objEducation.strInstitutionName}</h3>
                                 <p class="mb-1">${objEducation.strDegree}${strFieldDisplay}</p>
-                                <p class="text-muted mb-0">${objEducation.strStartDate || ''} – ${strDisplayEnd}</p>
+                                <p class="text-muted mb-0">${objEducation.strStartDate || ''} \u2013 ${strDisplayEnd}</p>
                             </div>
-                            <div>
+                            <div class="flex-shrink-0">
                                 <button
                                     class="btn btn-primary btn-sm me-2"
                                     type="button"
@@ -370,7 +1025,11 @@ document.querySelector('#btnSaveEducation').addEventListener('click', async () =
     const strDegree = document.querySelector('#txtDegree').value.trim()
     const strFieldOfStudy = document.querySelector('#txtFieldOfStudy').value.trim()
     const strEduStartDate = document.querySelector('#txtEduStartDate').value.trim()
-    const strEduEndDate = document.querySelector('#txtEduEndDate').value.trim()
+
+    // Use empty string for end date when "currently attending" is checked
+    const strEduEndDate = document.querySelector('#chkCurrentlyAttending').checked
+        ? ''
+        : document.querySelector('#txtEduEndDate').value.trim()
 
     let blnError = false
     let strMessage = ''
@@ -451,16 +1110,15 @@ document.querySelector('#btnCancelEditEducation').addEventListener('click', asyn
 })
 
 // Event delegation on divEducationList handles both edit and delete
-// button clicks that are created dynamically inside loadEducation().
+// button clicks created dynamically inside loadEducation().
 document.querySelector('#divEducationList').addEventListener('click', async (objEvent) => {
     const objDeleteBtn = objEvent.target.closest('[id^="btnDeleteEducation_"]')
     const objEditBtn = objEvent.target.closest('[id^="btnEditEducation_"]')
 
-    // ---- Delete education record ----
+    // ---- Delete education record (SweetAlert2 confirmation required) ----
     if(objDeleteBtn){
         const strEducationID = objDeleteBtn.id.replace('btnDeleteEducation_', '')
 
-        // Education deletes require a SweetAlert2 confirmation dialog
         const objResult = await Swal.fire({
             title: "Are you sure?",
             text: "This education record will be permanently deleted",
@@ -498,7 +1156,7 @@ document.querySelector('#divEducationList').addEventListener('click', async (obj
         }
     }
 
-    // ---- Edit education record — populate form ----
+    // ---- Edit education record — populate the form and set checkbox state ----
     if(objEditBtn){
         const strEducationID = objEditBtn.id.replace('btnEditEducation_', '')
 
@@ -515,13 +1173,23 @@ document.querySelector('#divEducationList').addEventListener('click', async (obj
             )
 
             if(objEducation){
-                // Populate form fields with the existing record's values
                 strEditingEducationID = objEducation.strEducationID
                 document.querySelector('#txtInstitutionName').value = objEducation.strInstitutionName
                 document.querySelector('#txtDegree').value = objEducation.strDegree
                 document.querySelector('#txtFieldOfStudy').value = objEducation.strFieldOfStudy || ''
                 document.querySelector('#txtEduStartDate').value = objEducation.strStartDate || ''
-                document.querySelector('#txtEduEndDate').value = objEducation.strEndDate || ''
+
+                // If end date is absent, check the "currently attending" checkbox
+                // and disable the end date field — mirrors how the form behaves on input
+                const blnCurrentlyAttending = !objEducation.strEndDate || objEducation.strEndDate.length < 1
+                document.querySelector('#chkCurrentlyAttending').checked = blnCurrentlyAttending
+                document.querySelector('#txtEduEndDate').disabled = blnCurrentlyAttending
+                if(!blnCurrentlyAttending){
+                    document.querySelector('#txtEduEndDate').value = objEducation.strEndDate
+                } else {
+                    document.querySelector('#txtEduEndDate').value = ''
+                }
+
                 document.querySelector('#btnSaveEducation').innerText = 'Update Education'
                 document.querySelector('#btnCancelEditEducation').classList.remove('d-none')
                 window.scrollTo({top: 0, behavior: 'smooth'})
@@ -541,20 +1209,104 @@ document.querySelector('#divEducationList').addEventListener('click', async (obj
 // SECTION: Jobs
 // ============================================================
 
-// resetJobForm clears all job form fields and returns the button label
-// to its default state so the form is ready for a new entry.
+// resetJobForm clears all job form fields, unchecks the currently-working
+// checkbox, re-enables the end date input, clears the pending
+// responsibilities array, and returns the button label to its default state.
 const resetJobForm = () => {
     document.querySelector('#txtRoleName').value = ''
     document.querySelector('#txtCompanyName').value = ''
     document.querySelector('#txtStartDate').value = ''
     document.querySelector('#txtEndDate').value = ''
+    document.querySelector('#txtEndDate').disabled = false
+    document.querySelector('#chkCurrentlyWorking').checked = false
+    document.querySelector('#txtNewResponsibility').value = ''
     document.querySelector('#btnSaveJob').innerText = 'Save Job'
     document.querySelector('#btnCancelEditJob').classList.add('d-none')
     strEditingJobID = ''
+
+    // Clear the in-memory responsibility array and re-render the empty preview
+    arrPendingResponsibilities = []
+    renderResponsibilityPreview()
 }
 
-// loadJobs fetches all jobs (with their responsibilities embedded) and
-// renders a card for each one including an inline add-responsibility form.
+// chkCurrentlyWorking disables and clears txtEndDate when checked,
+// re-enables it when unchecked.  Cards and resume output will display
+// "Present" when strEndDate is empty.
+document.querySelector('#chkCurrentlyWorking').addEventListener('change', () => {
+    const objEndDate = document.querySelector('#txtEndDate')
+    if(document.querySelector('#chkCurrentlyWorking').checked){
+        objEndDate.value = ''
+        objEndDate.disabled = true
+    } else {
+        objEndDate.disabled = false
+    }
+})
+
+// renderResponsibilityPreview rebuilds divResponsibilityPreview from
+// arrPendingResponsibilities.  Each item gets its own remove button.
+// Called after every add or remove action so the list stays in sync.
+const renderResponsibilityPreview = () => {
+    document.querySelector('#divResponsibilityPreview').innerHTML = ''
+    arrPendingResponsibilities.forEach((strDesc, intIndex) => {
+        document.querySelector('#divResponsibilityPreview').innerHTML += `
+            <div class="d-flex align-items-center justify-content-between py-1 border-bottom">
+                <span class="small">${strDesc}</span>
+                <button class="btn btn-link btn-sm text-danger p-0"
+                        type="button"
+                        id="btnRemoveResp_${intIndex}"
+                        aria-label="Remove responsibility from pending list">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>`
+    })
+}
+
+// Event delegation on divResponsibilityPreview for the individual remove
+// buttons.  Clicking one removes its item from the in-memory array and
+// re-renders the list.
+document.querySelector('#divResponsibilityPreview').addEventListener('click', (objEvent) => {
+    const objRemoveBtn = objEvent.target.closest('[id^="btnRemoveResp_"]')
+    if(objRemoveBtn){
+        const intIndex = parseInt(objRemoveBtn.id.replace('btnRemoveResp_', ''))
+        arrPendingResponsibilities.splice(intIndex, 1)
+        renderResponsibilityPreview()
+    }
+})
+
+// btnAddResponsibility appends the typed description to arrPendingResponsibilities
+// and refreshes divResponsibilityPreview so the user can see and remove it
+// before the job is saved.
+document.querySelector('#btnAddResponsibility').addEventListener('click', () => {
+    const strDescription = document.querySelector('#txtNewResponsibility').value.trim()
+
+    let blnError = false
+    let strMessage = ''
+
+    if(strDescription.length < 1){
+        blnError = true
+        strMessage += 'Please enter a responsibility.'
+    }
+
+    if(blnError == false){
+        // Add to in-memory array and clear the input
+        arrPendingResponsibilities.push(strDescription)
+        document.querySelector('#txtNewResponsibility').value = ''
+        renderResponsibilityPreview()
+    } else {
+        // Validation errors always surface through SweetAlert2
+        Swal.fire({
+            title: "Validation Error",
+            text: strMessage,
+            icon: "error"
+        })
+    }
+})
+
+// loadJobs fetches all jobs (with embedded responsibilities) and renders
+// a card for each one.  The card shows the job details, its saved
+// responsibilities with individual delete buttons, and no inline add form
+// (new responsibilities are added via the pending-responsibilities flow
+// in the top form before or during the save action).
 const loadJobs = async () => {
     try {
         const objResponse = await fetch(`${strBaseUrl}/api/jobs`)
@@ -576,9 +1328,9 @@ const loadJobs = async () => {
                 </div>`
         }
 
-        // Build one card per job, with responsibilities nested inside
+        // Build one card per job with its saved responsibilities listed inside
         arrJobs.forEach((objJob) => {
-            // Build the responsibility list items
+            // Build HTML for existing saved responsibilities — each has a delete button
             let strResponsibilitiesHtml = ''
             objJob.arrResponsibilities.forEach((objResponsibility) => {
                 strResponsibilitiesHtml += `
@@ -594,6 +1346,11 @@ const loadJobs = async () => {
                     </li>`
             })
 
+            // "Present" when end date is absent
+            const strEndDateDisplay = objJob.strEndDate && objJob.strEndDate.length > 0
+                ? objJob.strEndDate
+                : 'Present'
+
             document.querySelector('#divJobsList').innerHTML += `
                 <div class="card shadow-sm border-0 mb-4">
                     <div class="card-body">
@@ -602,7 +1359,7 @@ const loadJobs = async () => {
                                 <h3 class="h5 mb-1">${objJob.strRoleName}</h3>
                                 <p class="mb-1">${objJob.strCompanyName}</p>
                                 <p class="text-muted mb-0">
-                                    ${objJob.strStartDate} – ${objJob.strEndDate && objJob.strEndDate.length > 0 ? objJob.strEndDate : 'Present'}
+                                    ${objJob.strStartDate} \u2013 ${strEndDateDisplay}
                                 </p>
                             </div>
                             <div class="flex-shrink-0">
@@ -623,33 +1380,12 @@ const loadJobs = async () => {
                             </div>
                         </div>
 
+                        ${strResponsibilitiesHtml.length > 0 ? `
                         <hr>
-
                         <h4 class="h6">Responsibilities</h4>
-                        <div class="row g-2 mb-3">
-                            <div class="col-md-9">
-                                <input
-                                    class="form-control"
-                                    id="txtResponsibility_${objJob.strJobID}"
-                                    type="text"
-                                    placeholder="Add a responsibility bullet"
-                                    aria-label="Responsibility for ${objJob.strRoleName}">
-                            </div>
-                            <div class="col-md-3">
-                                <button
-                                    class="btn btn-success w-100"
-                                    type="button"
-                                    id="btnAddResponsibility_${objJob.strJobID}"
-                                    aria-label="Add responsibility to ${objJob.strRoleName}">
-                                    Add Responsibility
-                                </button>
-                            </div>
-                        </div>
                         <ul class="list-group">
-                            ${strResponsibilitiesHtml.length > 0
-                                ? strResponsibilitiesHtml
-                                : '<li class="list-group-item text-muted">No responsibilities saved yet.</li>'}
-                        </ul>
+                            ${strResponsibilitiesHtml}
+                        </ul>` : ''}
                     </div>
                 </div>`
         })
@@ -666,55 +1402,81 @@ const loadJobs = async () => {
     }
 }
 
-// btnSaveJob handles both creating (POST) and updating (PUT) a job record.
+// btnSaveJob handles both creating a new job (POST) and updating an
+// existing one (PUT) depending on strEditingJobID.
+// After a successful POST it also submits each pending responsibility
+// individually to /api/responsibilities so they are tied to the new job.
+// For PUT it similarly submits any pending responsibilities using the
+// existing strEditingJobID.
 document.querySelector('#btnSaveJob').addEventListener('click', async () => {
     const strRoleName = document.querySelector('#txtRoleName').value.trim()
     const strCompanyName = document.querySelector('#txtCompanyName').value.trim()
     const strStartDate = document.querySelector('#txtStartDate').value.trim()
-    const strEndDate = document.querySelector('#txtEndDate').value.trim()
+
+    // Use empty string for end date when "currently working here" is checked
+    const strEndDate = document.querySelector('#chkCurrentlyWorking').checked
+        ? ''
+        : document.querySelector('#txtEndDate').value.trim()
 
     let blnError = false
     let strMessage = ''
 
-    if(strRoleName.length < 1){
-        blnError = true
-        strMessage += 'You must provide a role name. '
-    }
-    if(strCompanyName.length < 1){
-        blnError = true
-        strMessage += 'You must provide a company name. '
-    }
-    if(strStartDate.length < 1){
-        blnError = true
-        strMessage += 'You must provide a start date. '
-    }
+    if(strRoleName.length < 1){ blnError = true; strMessage += 'You must provide a role name. ' }
+    if(strCompanyName.length < 1){ blnError = true; strMessage += 'You must provide a company name. ' }
+    if(strStartDate.length < 1){ blnError = true; strMessage += 'You must provide a start date. ' }
 
     if(blnError == false){
         try {
-            const strMethod = strEditingJobID.length > 0 ? 'PUT' : 'POST'
-            const objPayload = strEditingJobID.length > 0
+            const blnIsEditing = strEditingJobID.length > 0
+            const strMethod = blnIsEditing ? 'PUT' : 'POST'
+
+            const objPayload = blnIsEditing
                 ? {strJobID: strEditingJobID, strRoleName, strCompanyName, strStartDate, strEndDate}
                 : {strRoleName, strCompanyName, strStartDate, strEndDate}
 
-            const objResponse = await fetch(`${strBaseUrl}/api/jobs`, {
+            // Step 1: Create or update the job record
+            const objJobResponse = await fetch(`${strBaseUrl}/api/jobs`, {
                 method: strMethod,
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(objPayload)
             })
 
-            if(objResponse.ok){
-                Swal.fire({
-                    title: "Saved",
-                    text: strEditingJobID.length > 0 ? "Job updated successfully" : "Job saved successfully",
-                    icon: "success",
-                    timer: 1500
-                })
-                resetJobForm()
-                await loadJobs()
-            } else {
-                const objErrorData = await objResponse.json()
-                throw new Error(objErrorData.errorMessage || objErrorData.message || objResponse.status)
+            if(objJobResponse.ok == false){
+                const objErrorData = await objJobResponse.json()
+                throw new Error(objErrorData.errorMessage || objErrorData.message || objJobResponse.status)
             }
+
+            // Determine the job ID to associate with pending responsibilities.
+            // For POST, the new ID is returned in the response body.
+            // For PUT, use the existing strEditingJobID.
+            let strTargetJobID = ''
+            if(blnIsEditing){
+                strTargetJobID = strEditingJobID
+            } else {
+                const objJobData = await objJobResponse.json()
+                strTargetJobID = objJobData.strJobID
+            }
+
+            // Step 2: Submit each pending responsibility individually
+            for(const strDescription of arrPendingResponsibilities){
+                await fetch(`${strBaseUrl}/api/responsibilities`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({strJobID: strTargetJobID, strDescription})
+                })
+            }
+
+            // Step 3: Reset form and pending list, then reload the job list
+            resetJobForm()
+
+            Swal.fire({
+                title: "Saved",
+                text: blnIsEditing ? "Job updated successfully" : "Job saved successfully",
+                icon: "success",
+                timer: 1500
+            })
+
+            await loadJobs()
 
         } catch(objError) {
             Swal.fire({
@@ -742,18 +1504,17 @@ document.querySelector('#btnCancelEditJob').addEventListener('click', async () =
 // SECTION: Responsibilities
 // ============================================================
 
-// Event delegation on divJobsList handles all dynamic button clicks
-// for job edit/delete and responsibility add/delete.
-// Responsibility operations are SILENT — no SweetAlert2 for success,
-// error, or confirmation.  The list reloads itself as visual feedback.
-// Only validation errors use SweetAlert2.
+// Event delegation on divJobsList handles all dynamic button clicks for
+// job edit/delete and responsibility delete.
+// Responsibility delete is SILENT — no SweetAlert2 for success, error,
+// or confirmation.  The list reload provides implicit visual feedback.
+// Validation errors anywhere in this handler still use SweetAlert2.
 document.querySelector('#divJobsList').addEventListener('click', async (objEvent) => {
     const objDeleteJobBtn = objEvent.target.closest('[id^="btnDelete_"]')
     const objEditJobBtn = objEvent.target.closest('[id^="btnEdit_"]')
-    const objAddResponsibilityBtn = objEvent.target.closest('[id^="btnAddResponsibility_"]')
     const objDeleteResponsibilityBtn = objEvent.target.closest('[id^="btnDeleteResponsibility_"]')
 
-    // ---- Delete job (with SweetAlert2 confirmation) ----
+    // ---- Delete job (SweetAlert2 confirmation required) ----
     if(objDeleteJobBtn){
         const strJobID = objDeleteJobBtn.id.replace('btnDelete_', '')
 
@@ -795,7 +1556,7 @@ document.querySelector('#divJobsList').addEventListener('click', async (objEvent
         }
     }
 
-    // ---- Edit job — populate the form ----
+    // ---- Edit job — populate the form and set checkbox state ----
     if(objEditJobBtn){
         const strJobID = objEditJobBtn.id.replace('btnEdit_', '')
 
@@ -814,7 +1575,22 @@ document.querySelector('#divJobsList').addEventListener('click', async (objEvent
                 document.querySelector('#txtRoleName').value = objJob.strRoleName
                 document.querySelector('#txtCompanyName').value = objJob.strCompanyName
                 document.querySelector('#txtStartDate').value = objJob.strStartDate
-                document.querySelector('#txtEndDate').value = objJob.strEndDate || ''
+
+                // If end date is absent, check the "currently working" checkbox
+                // and disable the end date field
+                const blnCurrentlyWorking = !objJob.strEndDate || objJob.strEndDate.length < 1
+                document.querySelector('#chkCurrentlyWorking').checked = blnCurrentlyWorking
+                document.querySelector('#txtEndDate').disabled = blnCurrentlyWorking
+                if(!blnCurrentlyWorking){
+                    document.querySelector('#txtEndDate').value = objJob.strEndDate
+                } else {
+                    document.querySelector('#txtEndDate').value = ''
+                }
+
+                // Clear any previously pending responsibilities when entering edit mode
+                arrPendingResponsibilities = []
+                renderResponsibilityPreview()
+
                 document.querySelector('#btnSaveJob').innerText = 'Update Job'
                 document.querySelector('#btnCancelEditJob').classList.remove('d-none')
                 window.scrollTo({top: 0, behavior: 'smooth'})
@@ -829,47 +1605,7 @@ document.querySelector('#divJobsList').addEventListener('click', async (objEvent
         }
     }
 
-    // ---- Add responsibility (SILENT — no SweetAlert2 for success/error) ----
-    if(objAddResponsibilityBtn){
-        const strJobID = objAddResponsibilityBtn.id.replace('btnAddResponsibility_', '')
-        const strDescription = document.querySelector(`#txtResponsibility_${strJobID}`).value.trim()
-
-        let blnError = false
-        let strMessage = ''
-
-        if(strDescription.length < 1){
-            blnError = true
-            strMessage += 'You must provide a responsibility description.'
-        }
-
-        if(blnError == false){
-            try {
-                const objResponse = await fetch(`${strBaseUrl}/api/responsibilities`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({strJobID, strDescription})
-                })
-
-                // Silent reload regardless of success or failure —
-                // the list state reflects the actual database state
-                await loadJobs()
-
-            } catch(objError) {
-                // Silent catch — list reload provides the visual feedback
-                console.error('Failed to add responsibility:', objError.message)
-            }
-
-        } else {
-            // Validation errors DO use SweetAlert2 ("any validation error anywhere")
-            Swal.fire({
-                title: "Validation Error",
-                text: strMessage,
-                icon: "error"
-            })
-        }
-    }
-
-    // ---- Delete responsibility (SILENT — no confirmation, no SweetAlert2) ----
+    // ---- Delete responsibility from existing saved job (SILENT) ----
     if(objDeleteResponsibilityBtn){
         const strResponsibilityID = objDeleteResponsibilityBtn.id.replace('btnDeleteResponsibility_', '')
 
@@ -877,12 +1613,10 @@ document.querySelector('#divJobsList').addEventListener('click', async (objEvent
             await fetch(`${strBaseUrl}/api/responsibilities/${strResponsibilityID}`, {
                 method: 'DELETE'
             })
-
             // Silent reload — the disappearing item confirms the delete
             await loadJobs()
-
         } catch(objError) {
-            // Silent catch
+            // Silent catch — list reload provides the visual feedback
             console.error('Failed to delete responsibility:', objError.message)
         }
     }
@@ -892,7 +1626,7 @@ document.querySelector('#divJobsList').addEventListener('click', async (objEvent
 // SECTION: Skills
 // ============================================================
 
-// resetSkillForm clears inputs and resets the button/state for add mode.
+// resetSkillForm clears inputs and returns the form to add mode.
 const resetSkillForm = () => {
     document.querySelector('#txtSkillName').value = ''
     document.querySelector('#txtProficiencyLevel').value = ''
@@ -902,6 +1636,7 @@ const resetSkillForm = () => {
 }
 
 // loadSkills fetches and renders all skill cards.
+// Success and error are SILENT — only validation errors use SweetAlert2.
 const loadSkills = async () => {
     try {
         const objResponse = await fetch(`${strBaseUrl}/api/skills`)
@@ -957,13 +1692,11 @@ const loadSkills = async () => {
         await loadDashboard()
 
     } catch(objError) {
-        // Skills load errors are surfaced silently via console only;
-        // the empty list state provides implicit visual feedback
         console.error('Failed to load skills:', objError.message)
     }
 }
 
-// btnSaveSkill handles both POST and PUT for skills.
+// btnSaveSkill handles POST and PUT.
 // Add/update SUCCESS and ERROR are SILENT — only validation errors use Swal.
 document.querySelector('#btnSaveSkill').addEventListener('click', async () => {
     const strSkillName = document.querySelector('#txtSkillName').value.trim()
@@ -998,7 +1731,6 @@ document.querySelector('#btnSaveSkill').addEventListener('click', async () => {
             console.error('Failed to save skill:', objError.message)
         }
     } else {
-        // Validation errors always use SweetAlert2
         Swal.fire({
             title: "Validation Error",
             text: strMessage,
@@ -1013,8 +1745,7 @@ document.querySelector('#btnCancelEditSkill').addEventListener('click', async ()
     await loadSkills()
 })
 
-// Event delegation on divSkillsList — delete and edit are SILENT
-// (no SweetAlert2 for confirmation, success, or error).
+// Event delegation on divSkillsList — delete and edit are SILENT.
 document.querySelector('#divSkillsList').addEventListener('click', async (objEvent) => {
     const objDeleteBtn = objEvent.target.closest('[id^="btnDeleteSkill_"]')
     const objEditBtn = objEvent.target.closest('[id^="btnEditSkill_"]')
@@ -1022,7 +1753,6 @@ document.querySelector('#divSkillsList').addEventListener('click', async (objEve
     // ---- Delete skill (SILENT — no confirmation dialog) ----
     if(objDeleteBtn){
         const strSkillID = objDeleteBtn.id.replace('btnDeleteSkill_', '')
-
         try {
             await fetch(`${strBaseUrl}/api/skills/${strSkillID}`, {method: 'DELETE'})
             await loadSkills()
@@ -1034,19 +1764,13 @@ document.querySelector('#divSkillsList').addEventListener('click', async (objEve
     // ---- Edit skill — populate form ----
     if(objEditBtn){
         const strSkillID = objEditBtn.id.replace('btnEditSkill_', '')
-
         try {
             const objResponse = await fetch(`${strBaseUrl}/api/skills`)
-
-            if(objResponse.ok == false){
-                throw new Error('Failed to load skill for editing')
-            }
-
+            if(objResponse.ok == false) throw new Error('Failed to load skill for editing')
             const arrSkills = await objResponse.json()
             const objSkill = arrSkills.find(
                 (objCurrentSkill) => objCurrentSkill.strSkillID === strSkillID
             )
-
             if(objSkill){
                 strEditingSkillID = objSkill.strSkillID
                 document.querySelector('#txtSkillName').value = objSkill.strSkillName
@@ -1055,7 +1779,6 @@ document.querySelector('#divSkillsList').addEventListener('click', async (objEve
                 document.querySelector('#btnCancelEditSkill').classList.remove('d-none')
                 window.scrollTo({top: 0, behavior: 'smooth'})
             }
-
         } catch(objError) {
             console.error('Failed to load skill for editing:', objError.message)
         }
@@ -1076,15 +1799,11 @@ const resetAwardForm = () => {
     strEditingAwardID = ''
 }
 
-// loadAwards fetches and renders all award cards.
+// loadAwards fetches and renders all award cards — SILENT.
 const loadAwards = async () => {
     try {
         const objResponse = await fetch(`${strBaseUrl}/api/awards`)
-
-        if(objResponse.ok == false){
-            throw new Error('Failed to load awards')
-        }
-
+        if(objResponse.ok == false) throw new Error('Failed to load awards')
         const arrAwards = await objResponse.json()
         document.querySelector('#divAwardsList').innerHTML = ''
 
@@ -1141,7 +1860,7 @@ const loadAwards = async () => {
     }
 }
 
-// btnSaveAward — SILENT success/error; only validation uses Swal.
+// btnSaveAward — SILENT success/error; validation uses Swal.
 document.querySelector('#btnSaveAward').addEventListener('click', async () => {
     const strAwardName = document.querySelector('#txtAwardName').value.trim()
     const strAwardDate = document.querySelector('#txtAwardDate').value.trim()
@@ -1189,7 +1908,7 @@ document.querySelector('#btnCancelEditAward').addEventListener('click', async ()
     await loadAwards()
 })
 
-// Event delegation on divAwardsList — SILENT (no Swal for confirm/success/error).
+// Event delegation on divAwardsList — SILENT.
 document.querySelector('#divAwardsList').addEventListener('click', async (objEvent) => {
     const objDeleteBtn = objEvent.target.closest('[id^="btnDeleteAward_"]')
     const objEditBtn = objEvent.target.closest('[id^="btnEditAward_"]')
@@ -1197,7 +1916,6 @@ document.querySelector('#divAwardsList').addEventListener('click', async (objEve
     // ---- Delete award (SILENT) ----
     if(objDeleteBtn){
         const strAwardID = objDeleteBtn.id.replace('btnDeleteAward_', '')
-
         try {
             await fetch(`${strBaseUrl}/api/awards/${strAwardID}`, {method: 'DELETE'})
             await loadAwards()
@@ -1209,19 +1927,13 @@ document.querySelector('#divAwardsList').addEventListener('click', async (objEve
     // ---- Edit award — populate form ----
     if(objEditBtn){
         const strAwardID = objEditBtn.id.replace('btnEditAward_', '')
-
         try {
             const objResponse = await fetch(`${strBaseUrl}/api/awards`)
-
-            if(objResponse.ok == false){
-                throw new Error('Failed to load award for editing')
-            }
-
+            if(objResponse.ok == false) throw new Error('Failed to load award for editing')
             const arrAwards = await objResponse.json()
             const objAward = arrAwards.find(
                 (objCurrentAward) => objCurrentAward.strAwardID === strAwardID
             )
-
             if(objAward){
                 strEditingAwardID = objAward.strAwardID
                 document.querySelector('#txtAwardName').value = objAward.strAwardName
@@ -1231,7 +1943,6 @@ document.querySelector('#divAwardsList').addEventListener('click', async (objEve
                 document.querySelector('#btnCancelEditAward').classList.remove('d-none')
                 window.scrollTo({top: 0, behavior: 'smooth'})
             }
-
         } catch(objError) {
             console.error('Failed to load award for editing:', objError.message)
         }
@@ -1242,7 +1953,7 @@ document.querySelector('#divAwardsList').addEventListener('click', async (objEve
 // SECTION: Certifications
 // ============================================================
 
-// resetCertificationForm clears inputs and returns form to add mode.
+// resetCertificationForm clears inputs and returns the form to add mode.
 const resetCertificationForm = () => {
     document.querySelector('#txtCertificationName').value = ''
     document.querySelector('#txtIssuingOrganization').value = ''
@@ -1252,15 +1963,11 @@ const resetCertificationForm = () => {
     strEditingCertificationID = ''
 }
 
-// loadCertifications fetches and renders all certification cards.
+// loadCertifications fetches and renders all certification cards — SILENT.
 const loadCertifications = async () => {
     try {
         const objResponse = await fetch(`${strBaseUrl}/api/certifications`)
-
-        if(objResponse.ok == false){
-            throw new Error('Failed to load certifications')
-        }
-
+        if(objResponse.ok == false) throw new Error('Failed to load certifications')
         const arrCertifications = await objResponse.json()
         document.querySelector('#divCertificationsList').innerHTML = ''
 
@@ -1378,7 +2085,6 @@ document.querySelector('#divCertificationsList').addEventListener('click', async
     // ---- Delete certification (SILENT) ----
     if(objDeleteBtn){
         const strCertificationID = objDeleteBtn.id.replace('btnDeleteCertification_', '')
-
         try {
             await fetch(`${strBaseUrl}/api/certifications/${strCertificationID}`, {method: 'DELETE'})
             await loadCertifications()
@@ -1390,19 +2096,13 @@ document.querySelector('#divCertificationsList').addEventListener('click', async
     // ---- Edit certification — populate form ----
     if(objEditBtn){
         const strCertificationID = objEditBtn.id.replace('btnEditCertification_', '')
-
         try {
             const objResponse = await fetch(`${strBaseUrl}/api/certifications`)
-
-            if(objResponse.ok == false){
-                throw new Error('Failed to load certification for editing')
-            }
-
+            if(objResponse.ok == false) throw new Error('Failed to load certification for editing')
             const arrCertifications = await objResponse.json()
             const objCertification = arrCertifications.find(
                 (objCurrentCert) => objCurrentCert.strCertificationID === strCertificationID
             )
-
             if(objCertification){
                 strEditingCertificationID = objCertification.strCertificationID
                 document.querySelector('#txtCertificationName').value = objCertification.strCertificationName
@@ -1412,11 +2112,280 @@ document.querySelector('#divCertificationsList').addEventListener('click', async
                 document.querySelector('#btnCancelEditCertification').classList.remove('d-none')
                 window.scrollTo({top: 0, behavior: 'smooth'})
             }
-
         } catch(objError) {
             console.error('Failed to load certification for editing:', objError.message)
         }
     }
+})
+
+// ============================================================
+// SECTION: PDF Export
+// ============================================================
+
+// generateResumePDF
+// Fetches all resume data, builds a jsPDF document matching
+// the Crumb_Resume.pdf template, and triggers a browser
+// download. ALL fetch calls must use strBaseUrl — bare
+// relative paths will resolve against file:// and fail.
+const generateResumePDF = async () => {
+    try {
+        // Step 1: Fetch all resume data in parallel.
+        // strBaseUrl is REQUIRED on every fetch call here.
+        // Bare paths like '/api/profile' will fail under loadFile.
+        const [objProfile, objEducation, objJobs, objSkills, objCerts, objAwards] = await Promise.all([
+            fetch(`${strBaseUrl}/api/profile`),
+            fetch(`${strBaseUrl}/api/education`),
+            fetch(`${strBaseUrl}/api/jobs`),
+            fetch(`${strBaseUrl}/api/skills`),
+            fetch(`${strBaseUrl}/api/certifications`),
+            fetch(`${strBaseUrl}/api/awards`)
+        ])
+
+        const arrProfile   = await objProfile.json()
+        const arrEducation = await objEducation.json()
+        const arrJobs      = await objJobs.json()
+        const arrSkills    = await objSkills.json()
+        const arrCerts     = await objCerts.json()
+        const arrAwards    = await objAwards.json()
+
+        // Step 2: Instantiate jsPDF
+        const { jsPDF } = window.jspdf
+        const objPDF = new jsPDF({orientation: 'portrait', unit: 'mm', format: 'a4'})
+
+        const intPageWidth   = 210
+        const intPageHeight  = 297
+        const intMargin      = 15
+        const intContentWidth  = intPageWidth - (intMargin * 2)
+        const intLeftColWidth  = intContentWidth * 0.25
+        const intRightColWidth = intContentWidth * 0.75
+        const intRightColX   = intMargin + intLeftColWidth
+        let intY = intMargin
+
+        // checkPageBreak adds a new page if the next block of
+        // content would overflow the bottom margin
+        const checkPageBreak = (intNeeded) => {
+            if(intY + intNeeded > intPageHeight - intMargin){
+                objPDF.addPage()
+                intY = intMargin
+            }
+        }
+
+        // Step 3: Profile header
+        if(arrProfile.length > 0){
+            const objP = arrProfile[0]
+
+            objPDF.setFont('helvetica', 'bold')
+            objPDF.setFontSize(16)
+            objPDF.text(objP.strFullName || '', intPageWidth / 2, intY, {align: 'center'})
+            intY += 7
+
+            objPDF.setFont('helvetica', 'normal')
+            objPDF.setFontSize(9)
+
+            const strLeft   = [objP.strLinkedIn, objP.strGitHub].filter(Boolean).join('\n')
+            const strCenter = objP.strEmail || ''
+            const strRight  = [objP.strPhone, objP.strWebsite].filter(Boolean).join('\n')
+            const intContactLines = Math.max(
+                strLeft.split('\n').length,
+                strCenter.split('\n').length,
+                strRight.split('\n').length
+            )
+
+            if(strLeft)   objPDF.text(strLeft,   intMargin,                intY)
+            if(strCenter) objPDF.text(strCenter, intPageWidth / 2,         intY, {align: 'center'})
+            if(strRight)  objPDF.text(strRight,  intPageWidth - intMargin, intY, {align: 'right'})
+            intY += (intContactLines * 4) + 3
+
+            objPDF.setLineWidth(0.3)
+            objPDF.line(intMargin, intY, intPageWidth - intMargin, intY)
+            intY += 4
+        }
+
+        // Step 4: Education section
+        if(arrEducation.length > 0){
+            let blnEduHeaderDrawn = false
+            arrEducation.forEach((objEdu) => {
+                checkPageBreak(20)
+
+                if(!blnEduHeaderDrawn){
+                    objPDF.setFont('helvetica', 'bold')
+                    objPDF.setFontSize(10)
+                    objPDF.text('Education', intMargin, intY)
+                    blnEduHeaderDrawn = true
+                }
+
+                const strEndDisplay = objEdu.strEndDate && objEdu.strEndDate.length > 0
+                    ? objEdu.strEndDate : 'Present'
+
+                objPDF.setFont('helvetica', 'italic')
+                objPDF.setFontSize(9)
+                objPDF.text(strEndDisplay, intMargin, intY + 5)
+
+                objPDF.setFont('helvetica', 'bold')
+                objPDF.setFontSize(10)
+                objPDF.text(objEdu.strInstitutionName || '', intRightColX, intY)
+
+                objPDF.setFont('helvetica', 'normal')
+                objPDF.setFontSize(9)
+                const strDegreeText = [objEdu.strDegree, objEdu.strFieldOfStudy]
+                    .filter(Boolean).join(' in ')
+                objPDF.text(strDegreeText, intRightColX, intY + 5)
+                intY += 13
+            })
+            intY += 2
+        }
+
+        // Step 5: Work Experience section
+        if(arrJobs.length > 0){
+            let blnJobHeaderDrawn = false
+            arrJobs.forEach((objJob) => {
+                checkPageBreak(25)
+
+                const strEndDisplay = objJob.strEndDate && objJob.strEndDate.length > 0
+                    ? objJob.strEndDate : 'Present'
+
+                if(!blnJobHeaderDrawn){
+                    objPDF.setFont('helvetica', 'bold')
+                    objPDF.setFontSize(10)
+                    objPDF.text('Work Experience', intMargin, intY)
+                    blnJobHeaderDrawn = true
+                }
+
+                objPDF.setFont('helvetica', 'italic')
+                objPDF.setFontSize(9)
+                objPDF.text(`${objJob.strStartDate} - ${strEndDisplay}`, intMargin, intY + 5)
+
+                objPDF.setFont('helvetica', 'bold')
+                objPDF.setFontSize(10)
+                objPDF.text(objJob.strRoleName || '', intRightColX, intY)
+
+                objPDF.setFont('helvetica', 'normal')
+                objPDF.setFontSize(9)
+                objPDF.text(objJob.strCompanyName || '', intRightColX, intY + 5)
+                intY += 11
+
+                // Responsibilities as dash-prefixed bullet lines
+                if(objJob.arrResponsibilities && objJob.arrResponsibilities.length > 0){
+                    objJob.arrResponsibilities.forEach((objResp) => {
+                        const arrLines = objPDF.splitTextToSize(
+                            `- ${objResp.strDescription}`,
+                            intRightColWidth - 5
+                        )
+                        checkPageBreak(arrLines.length * 4 + 2)
+                        objPDF.text(arrLines, intRightColX + 3, intY)
+                        intY += (arrLines.length * 4) + 1
+                    })
+                }
+                intY += 3
+            })
+            intY += 2
+        }
+
+        // Step 6: Skills section
+        if(arrSkills.length > 0){
+            checkPageBreak(15)
+            objPDF.setFont('helvetica', 'bold')
+            objPDF.setFontSize(10)
+            objPDF.text('Skills', intMargin, intY)
+
+            objPDF.setFont('helvetica', 'normal')
+            objPDF.setFontSize(9)
+            const strSkillsLine = arrSkills.map(objSkill => objSkill.strSkillName).join(', ')
+            const arrSkillLines = objPDF.splitTextToSize(strSkillsLine, intRightColWidth)
+            objPDF.text(arrSkillLines, intRightColX, intY)
+            intY += (arrSkillLines.length * 4) + 4
+        }
+
+        // Step 7: Certifications section
+        if(arrCerts.length > 0){
+            let blnCertHeaderDrawn = false
+            arrCerts.forEach((objCert) => {
+                checkPageBreak(12)
+
+                if(!blnCertHeaderDrawn){
+                    objPDF.setFont('helvetica', 'bold')
+                    objPDF.setFontSize(10)
+                    objPDF.text('Certifications', intMargin, intY)
+                    blnCertHeaderDrawn = true
+                }
+
+                if(objCert.strDateEarned && objCert.strDateEarned.length > 0){
+                    objPDF.setFont('helvetica', 'italic')
+                    objPDF.setFontSize(9)
+                    objPDF.text(objCert.strDateEarned, intMargin, intY + 5)
+                }
+
+                objPDF.setFont('helvetica', 'bold')
+                objPDF.setFontSize(9)
+                objPDF.text(objCert.strCertificationName || '', intRightColX, intY)
+
+                objPDF.setFont('helvetica', 'normal')
+                objPDF.setFontSize(9)
+                if(objCert.strIssuingOrganization){
+                    objPDF.text(objCert.strIssuingOrganization, intRightColX, intY + 5)
+                }
+                intY += 11
+            })
+            intY += 2
+        }
+
+        // Step 8: Awards section
+        if(arrAwards.length > 0){
+            let blnAwardHeaderDrawn = false
+            arrAwards.forEach((objAward) => {
+                checkPageBreak(15)
+
+                if(!blnAwardHeaderDrawn){
+                    objPDF.setFont('helvetica', 'bold')
+                    objPDF.setFontSize(10)
+                    objPDF.text('Awards', intMargin, intY)
+                    blnAwardHeaderDrawn = true
+                }
+
+                if(objAward.strAwardDate && objAward.strAwardDate.length > 0){
+                    objPDF.setFont('helvetica', 'italic')
+                    objPDF.setFontSize(9)
+                    objPDF.text(objAward.strAwardDate, intMargin, intY + 5)
+                }
+
+                objPDF.setFont('helvetica', 'bold')
+                objPDF.setFontSize(9)
+                objPDF.text(objAward.strAwardName || '', intRightColX, intY)
+
+                if(objAward.strDescription && objAward.strDescription.length > 0){
+                    objPDF.setFont('helvetica', 'normal')
+                    objPDF.setFontSize(9)
+                    const arrDescLines = objPDF.splitTextToSize(
+                        objAward.strDescription,
+                        intRightColWidth
+                    )
+                    checkPageBreak(arrDescLines.length * 4 + 2)
+                    objPDF.text(arrDescLines, intRightColX, intY + 5)
+                    intY += (arrDescLines.length * 4) + 3
+                } else {
+                    intY += 8
+                }
+                intY += 3
+            })
+        }
+
+        // Step 9: Trigger download
+        objPDF.save('resume.pdf')
+
+    } catch(objError) {
+        Swal.fire({
+            title: "Export Failed",
+            text:  "Could not generate PDF. Please try again.",
+            icon:  "error"
+        })
+    }
+}
+
+// btnExportPDF — export the complete resume as a PDF document.
+// generateResumePDF fetches all six data sources independently so
+// the export is never gated on the resume builder checkbox selections.
+document.querySelector('#btnExportPDF').addEventListener('click', async () => {
+    await generateResumePDF()
 })
 
 // ============================================================
@@ -1425,7 +2394,8 @@ document.querySelector('#divCertificationsList').addEventListener('click', async
 
 // loadResumeBuilder fetches all six data sources and builds the
 // selection panel with checkboxes for every resume item.
-// Profile information is always included when present — no checkbox needed.
+// Profile information is always included when present — no checkbox
+// is shown for profile in the selection UI.
 const loadResumeBuilder = async () => {
     try {
         // Fetch all resources in parallel to keep load time minimal
@@ -1465,22 +2435,7 @@ const loadResumeBuilder = async () => {
 
         document.querySelector('#divResumeSelections').innerHTML = ''
 
-        // ---- Profile (always-included notice, no checkbox) ----
-        let strProfileHtml = ''
-        if(arrProfile.length > 0){
-            const objProfile = arrProfile[0]
-            strProfileHtml = `
-                <div class="alert alert-primary d-flex align-items-center mb-3" role="alert">
-                    <i class="fas fa-user fa-fw me-2"></i>
-                    <div>
-                        <strong>Profile — always included:</strong>
-                        ${objProfile.strFullName}
-                        ${objProfile.strEmail && objProfile.strEmail.length > 0 ? objProfile.strEmail : ''}
-                        ${objProfile.strPhone && objProfile.strPhone.length > 0 ? ' · ' + objProfile.strPhone : ''}
-                        ${objProfile.strLinkedIn && objProfile.strLinkedIn.length > 0 ? ' · ' + objProfile.strLinkedIn : ''}
-                    </div>
-                </div>`
-        }
+        // Profile is silently included in the generated resume — no notice shown.
 
         // ---- Jobs with nested responsibility checkboxes ----
         let strJobsHtml = ''
@@ -1603,7 +2558,6 @@ const loadResumeBuilder = async () => {
 
         // Assemble the full selection panel HTML
         document.querySelector('#divResumeSelections').innerHTML = `
-            ${strProfileHtml}
             <div class="row g-4">
                 <div class="col-12">
                     <div class="card border-0 bg-body-tertiary">
@@ -1666,8 +2620,15 @@ const loadResumeBuilder = async () => {
     }
 }
 
-// btnPreviewResume assembles the preview HTML from all checked items
-// plus the profile (always included if present) and the selected education.
+// btnPreviewResume assembles the preview HTML from all checked items plus
+// the profile (always included if present).
+// Resume sections render in this exact order per spec:
+//   1. Profile contact information
+//   2. Education
+//   3. Work Experience and responsibilities
+//   4. Certifications
+//   5. Skills
+//   6. Awards
 document.querySelector('#btnPreviewResume').addEventListener('click', async () => {
     try {
         // Re-fetch everything to ensure the preview is built from fresh data
@@ -1752,7 +2713,7 @@ document.querySelector('#btnPreviewResume').addEventListener('click', async () =
         if(blnError == false){
             let strPreviewHtml = ''
 
-            // ---- Profile section (always shown when present) ----
+            // ---- 1. Profile section (always shown when present) ----
             if(blnHasProfile){
                 const objProfile = arrProfile[0]
                 const arrContactParts = []
@@ -1770,9 +2731,32 @@ document.querySelector('#btnPreviewResume').addEventListener('click', async () =
                 strPreviewHtml += '</section>'
             }
 
-            // ---- Experience section ----
+            // ---- 2. Education section ----
+            const arrSelectedEducation = arrEducation.filter(
+                (objEdu) => arrSelectedEducationIDs.includes(objEdu.strEducationID)
+            )
+
+            if(arrSelectedEducation.length > 0){
+                strPreviewHtml += '<section class="mb-4"><h4 class="h5 border-bottom pb-2">Education</h4>'
+                arrSelectedEducation.forEach((objEdu) => {
+                    const strFieldDisplay = objEdu.strFieldOfStudy && objEdu.strFieldOfStudy.length > 0
+                        ? ' in ' + objEdu.strFieldOfStudy
+                        : ''
+                    const strEduEnd = objEdu.strEndDate && objEdu.strEndDate.length > 0
+                        ? objEdu.strEndDate
+                        : 'Present'
+                    strPreviewHtml += '<div class="mb-3">'
+                    strPreviewHtml += '<p class="fw-bold mb-1">' + objEdu.strInstitutionName + '</p>'
+                    strPreviewHtml += '<p class="mb-1">' + objEdu.strDegree + strFieldDisplay + '</p>'
+                    strPreviewHtml += '<p class="text-muted mb-0">' + (objEdu.strStartDate || '') + ' \u2013 ' + strEduEnd + '</p>'
+                    strPreviewHtml += '</div>'
+                })
+                strPreviewHtml += '</section>'
+            }
+
+            // ---- 3. Work Experience section ----
             // Include a job when its checkbox is checked OR at least one of its
-            // responsibilities is checked (mirroring the original pattern)
+            // responsibilities is checked.
             const arrSelectedJobs = arrJobs.filter((objJob) => {
                 const blnJobChecked = arrSelectedJobIDs.includes(objJob.strJobID)
                 const blnHasCheckedResponsibility = objJob.arrResponsibilities.some(
@@ -1782,7 +2766,7 @@ document.querySelector('#btnPreviewResume').addEventListener('click', async () =
             })
 
             if(arrSelectedJobs.length > 0){
-                strPreviewHtml += '<section class="mb-4"><h4 class="h5 border-bottom pb-2">Experience</h4>'
+                strPreviewHtml += '<section class="mb-4"><h4 class="h5 border-bottom pb-2">Work Experience</h4>'
                 arrSelectedJobs.forEach((objJob) => {
                     let strResponsibilityHtml = ''
                     objJob.arrResponsibilities
@@ -1791,7 +2775,9 @@ document.querySelector('#btnPreviewResume').addEventListener('click', async () =
                             strResponsibilityHtml += '<li>' + objR.strDescription + '</li>'
                         })
 
-                    const strJobEnd = objJob.strEndDate && objJob.strEndDate.length > 0 ? objJob.strEndDate : 'Present'
+                    const strJobEnd = objJob.strEndDate && objJob.strEndDate.length > 0
+                        ? objJob.strEndDate
+                        : 'Present'
                     strPreviewHtml += '<div class="mb-3">'
                     strPreviewHtml += '<p class="fw-bold mb-1">' + objJob.strRoleName + '</p>'
                     strPreviewHtml += '<p class="mb-1">' + objJob.strCompanyName + '</p>'
@@ -1804,28 +2790,23 @@ document.querySelector('#btnPreviewResume').addEventListener('click', async () =
                 strPreviewHtml += '</section>'
             }
 
-            // ---- Education section ----
-            const arrSelectedEducation = arrEducation.filter(
-                (objEdu) => arrSelectedEducationIDs.includes(objEdu.strEducationID)
+            // ---- 4. Certifications section ----
+            const arrSelectedCertifications = arrCertifications.filter(
+                (objCertification) => arrSelectedCertificationIDs.includes(objCertification.strCertificationID)
             )
 
-            if(arrSelectedEducation.length > 0){
-                strPreviewHtml += '<section class="mb-4"><h4 class="h5 border-bottom pb-2">Education</h4>'
-                arrSelectedEducation.forEach((objEdu) => {
-                    const strFieldDisplay = objEdu.strFieldOfStudy && objEdu.strFieldOfStudy.length > 0
-                        ? ' in ' + objEdu.strFieldOfStudy
+            if(arrSelectedCertifications.length > 0){
+                strPreviewHtml += '<section class="mb-4"><h4 class="h5 border-bottom pb-2">Certifications</h4><ul>'
+                arrSelectedCertifications.forEach((objCertification) => {
+                    const strCertDate = objCertification.strDateEarned && objCertification.strDateEarned.length > 0
+                        ? ' (' + objCertification.strDateEarned + ')'
                         : ''
-                    const strEduEnd = objEdu.strEndDate && objEdu.strEndDate.length > 0 ? objEdu.strEndDate : 'Present'
-                    strPreviewHtml += '<div class="mb-3">'
-                    strPreviewHtml += '<p class="fw-bold mb-1">' + objEdu.strInstitutionName + '</p>'
-                    strPreviewHtml += '<p class="mb-1">' + objEdu.strDegree + strFieldDisplay + '</p>'
-                    strPreviewHtml += '<p class="text-muted mb-0">' + (objEdu.strStartDate || '') + ' \u2013 ' + strEduEnd + '</p>'
-                    strPreviewHtml += '</div>'
+                    strPreviewHtml += '<li>' + objCertification.strCertificationName + ' \u2014 ' + objCertification.strIssuingOrganization + strCertDate + '</li>'
                 })
-                strPreviewHtml += '</section>'
+                strPreviewHtml += '</ul></section>'
             }
 
-            // ---- Skills section ----
+            // ---- 5. Skills section ----
             const arrSelectedSkills = arrSkills.filter(
                 (objSkill) => arrSelectedSkillIDs.includes(objSkill.strSkillID)
             )
@@ -1841,13 +2822,13 @@ document.querySelector('#btnPreviewResume').addEventListener('click', async () =
                 strPreviewHtml += '</ul></section>'
             }
 
-            // ---- Awards section ----
+            // ---- 6. Awards section ----
             const arrSelectedAwards = arrAwards.filter(
                 (objAward) => arrSelectedAwardIDs.includes(objAward.strAwardID)
             )
 
             if(arrSelectedAwards.length > 0){
-                strPreviewHtml += '<section class="mb-4"><h4 class="h5 border-bottom pb-2">Awards</h4><ul>'
+                strPreviewHtml += '<section class="mb-0"><h4 class="h5 border-bottom pb-2">Awards</h4><ul>'
                 arrSelectedAwards.forEach((objAward) => {
                     const strDate = objAward.strAwardDate && objAward.strAwardDate.length > 0
                         ? ' (' + objAward.strAwardDate + ')'
@@ -1856,22 +2837,6 @@ document.querySelector('#btnPreviewResume').addEventListener('click', async () =
                         ? ' \u2014 ' + objAward.strDescription
                         : ''
                     strPreviewHtml += '<li>' + objAward.strAwardName + strDate + strDesc + '</li>'
-                })
-                strPreviewHtml += '</ul></section>'
-            }
-
-            // ---- Certifications section ----
-            const arrSelectedCertifications = arrCertifications.filter(
-                (objCertification) => arrSelectedCertificationIDs.includes(objCertification.strCertificationID)
-            )
-
-            if(arrSelectedCertifications.length > 0){
-                strPreviewHtml += '<section class="mb-0"><h4 class="h5 border-bottom pb-2">Certifications</h4><ul>'
-                arrSelectedCertifications.forEach((objCertification) => {
-                    const strCertDate = objCertification.strDateEarned && objCertification.strDateEarned.length > 0
-                        ? ' (' + objCertification.strDateEarned + ')'
-                        : ''
-                    strPreviewHtml += '<li>' + objCertification.strCertificationName + ' \u2014 ' + objCertification.strIssuingOrganization + strCertDate + '</li>'
                 })
                 strPreviewHtml += '</ul></section>'
             }
@@ -1902,7 +2867,9 @@ document.querySelector('#btnPreviewResume').addEventListener('click', async () =
 })
 
 // btnGetFeedback sends the plain-text preview content to Gemini 2.5 Flash
-// and renders the returned strengths / weaknesses / suggestions.
+// via the local /api/gemini route and renders the returned strengths /
+// weaknesses / suggestions feedback cards.
+// Gemini 429 rate-limit errors and all other errors surface via SweetAlert2.
 document.querySelector('#btnGetFeedback').addEventListener('click', async () => {
     const strResumeContent = document.querySelector('#divPreviewContent').innerText.trim()
 
@@ -1987,8 +2954,8 @@ document.querySelector('#btnGetFeedback').addEventListener('click', async () => 
 // ============================================================
 
 // init runs once on page load.  It resets all forms to a clean state
-// and loads the dashboard counts so the user sees live numbers
-// immediately without navigating anywhere.
+// and loads the dashboard so the user sees live counts immediately
+// without navigating anywhere.
 const init = async () => {
     try {
         resetJobForm()
