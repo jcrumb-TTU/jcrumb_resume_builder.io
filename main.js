@@ -1,3 +1,16 @@
+// ============================================================
+// This file was generated through a collaborative process
+// combining Claude Sonnet 4.6 (Anthropic) and AI-assisted
+// code generation tools across multiple development phases.
+// Prompts used to produce this code were crafted using
+// Claude Sonnet 4.6 and were designed to operate within
+// the parameters covered in CSC 3100 during the Spring
+// Semester of 2026, referencing the course AGENT.md
+// conventions and class code examples developed throughout
+// the semester. The author reviewed, oversaw, and approved
+// all generated code prior to final commit and push to
+// the project repository.
+// ============================================================
 const path = require('path')
 const {app, BrowserWindow} = require('electron')
 const {startServer} = require('./server')
@@ -54,3 +67,17 @@ app.on('window-all-closed', () => {
         app.quit()
     }
 })
+
+// ============================================================
+// This file was generated through a collaborative process
+// combining Claude Sonnet 4.6 (Anthropic) and AI-assisted
+// code generation tools across multiple development phases.
+// Prompts used to produce this code were crafted using
+// Claude Sonnet 4.6 and were designed to operate within
+// the parameters covered in CSC 3100 during the Spring
+// Semester of 2026, referencing the course AGENT.md
+// conventions and class code examples developed throughout
+// the semester. The author reviewed, oversaw, and approved
+// all generated code prior to final commit and push to
+// the project repository.
+// ============================================================
