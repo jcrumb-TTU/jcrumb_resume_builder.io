@@ -58,7 +58,9 @@ const objDatabaseReadyPromise = new Promise((resolve, reject) => {
                     strRoleName TEXT NOT NULL,
                     strCompanyName TEXT NOT NULL,
                     strStartDate TEXT NOT NULL,
-                    strEndDate TEXT
+                    strEndDate TEXT,
+                    strLocation TEXT,
+                    strDepartment TEXT
                 )`)
 
                 dbResume.run(`CREATE TABLE IF NOT EXISTS tblResponsibilities (
@@ -98,20 +100,39 @@ const objDatabaseReadyPromise = new Promise((resolve, reject) => {
                     strEmail TEXT,
                     strLinkedIn TEXT,
                     strGitHub TEXT,
-                    strWebsite TEXT
+                    strCity TEXT
                 )`)
 
 
                 // tblEducation is the LAST table created inside serialize().
                 // Its callback resolves objDatabaseReadyPromise and unblocks
                 // server startup.  All tables above must be created first.
+
+                // ALTER TABLE guards: add new columns to existing databases
+                // without destroying data.  SQLite throws if a column already
+                // exists, so we silently ignore "duplicate column" errors only.
+                const arrAlterStatements = [
+                    "ALTER TABLE tblJobs ADD COLUMN strLocation TEXT",
+                    "ALTER TABLE tblJobs ADD COLUMN strDepartment TEXT",
+                    "ALTER TABLE tblEducation ADD COLUMN strLocation TEXT",
+                    "ALTER TABLE tblProfile ADD COLUMN strCity TEXT"
+                ]
+                arrAlterStatements.forEach(strAlter => {
+                    dbResume.run(strAlter, [], function(objAlterErr){
+                        if(objAlterErr && !objAlterErr.message.includes('duplicate column')){
+                            console.error('ALTER TABLE error:', objAlterErr.message)
+                        }
+                    })
+                })
+
                 dbResume.run(`CREATE TABLE IF NOT EXISTS tblEducation (
                     strEducationID TEXT PRIMARY KEY,
                     strInstitutionName TEXT NOT NULL,
                     strDegree TEXT NOT NULL,
                     strFieldOfStudy TEXT,
                     strStartDate TEXT,
-                    strEndDate TEXT
+                    strEndDate TEXT,
+                    strLocation TEXT
                 )`, [], function(objTableError){
                     if(objTableError){
                         reject(objTableError)
@@ -182,6 +203,8 @@ app.post('/api/jobs', (req, res) => {
     let strCompanyName = getTrimmedString(req.body.strCompanyName)
     let strStartDate = getTrimmedString(req.body.strStartDate)
     let strEndDate = getTrimmedString(req.body.strEndDate)
+    let strLocation = getTrimmedString(req.body.strLocation)
+    let strDepartment = getTrimmedString(req.body.strDepartment)
 
     let blnError = false
     let strMessage = ''
@@ -201,8 +224,8 @@ app.post('/api/jobs', (req, res) => {
 
     if(blnError == false){
         const strJobID = uuidv4()
-        const strQuery = "INSERT INTO tblJobs VALUES (?,?,?,?,?)"
-        dbResume.run(strQuery, [strJobID, strRoleName, strCompanyName, strStartDate, strEndDate], function(err){
+        const strQuery = "INSERT INTO tblJobs VALUES (?,?,?,?,?,?,?)"
+        dbResume.run(strQuery, [strJobID, strRoleName, strCompanyName, strStartDate, strEndDate, strLocation, strDepartment], function(err){
             if(err){
                 res.status(500).json({outcome: "error", message: err.message})
             } else {
@@ -220,6 +243,8 @@ app.put('/api/jobs', (req, res) => {
     let strCompanyName = getTrimmedString(req.body.strCompanyName)
     let strStartDate = getTrimmedString(req.body.strStartDate)
     let strEndDate = getTrimmedString(req.body.strEndDate)
+    let strLocation = getTrimmedString(req.body.strLocation)
+    let strDepartment = getTrimmedString(req.body.strDepartment)
 
     let blnError = false
     let strMessage = ''
@@ -242,8 +267,8 @@ app.put('/api/jobs', (req, res) => {
     }
 
     if(blnError == false){
-        const strQuery = "UPDATE tblJobs SET strRoleName = ?, strCompanyName = ?, strStartDate = ?, strEndDate = ? WHERE strJobID = ?"
-        dbResume.run(strQuery, [strRoleName, strCompanyName, strStartDate, strEndDate, strJobID], function(err){
+        const strQuery = "UPDATE tblJobs SET strRoleName = ?, strCompanyName = ?, strStartDate = ?, strEndDate = ?, strLocation = ?, strDepartment = ? WHERE strJobID = ?"
+        dbResume.run(strQuery, [strRoleName, strCompanyName, strStartDate, strEndDate, strLocation, strDepartment, strJobID], function(err){
             if(err){
                 res.status(500).json({outcome: "error", message: err.message})
             } else {
@@ -702,7 +727,7 @@ app.post('/api/profile', (req, res) => {
     let strEmail = getTrimmedString(req.body.strEmail)
     let strLinkedIn = getTrimmedString(req.body.strLinkedIn)
     let strGitHub = getTrimmedString(req.body.strGitHub)
-    let strWebsite = getTrimmedString(req.body.strWebsite)
+    let strCity = getTrimmedString(req.body.strCity)
 
     let blnError = false
     let strMessage = ''
@@ -715,7 +740,7 @@ app.post('/api/profile', (req, res) => {
     if(blnError == false){
         const strProfileID = uuidv4()
         const strQuery = "INSERT INTO tblProfile VALUES (?,?,?,?,?,?,?)"
-        dbResume.run(strQuery, [strProfileID, strFullName, strPhone, strEmail, strLinkedIn, strGitHub, strWebsite], function(err){
+        dbResume.run(strQuery, [strProfileID, strFullName, strPhone, strEmail, strLinkedIn, strGitHub, strCity], function(err){
             if(err){
                 res.status(500).json({outcome: "error", message: err.message})
             } else {
@@ -737,7 +762,7 @@ app.put('/api/profile', (req, res) => {
     let strEmail = getTrimmedString(req.body.strEmail)
     let strLinkedIn = getTrimmedString(req.body.strLinkedIn)
     let strGitHub = getTrimmedString(req.body.strGitHub)
-    let strWebsite = getTrimmedString(req.body.strWebsite)
+    let strCity = getTrimmedString(req.body.strCity)
 
     let blnError = false
     let strMessage = ''
@@ -752,8 +777,8 @@ app.put('/api/profile', (req, res) => {
     }
 
     if(blnError == false){
-        const strQuery = "UPDATE tblProfile SET strFullName = ?, strPhone = ?, strEmail = ?, strLinkedIn = ?, strGitHub = ?, strWebsite = ? WHERE strProfileID = ?"
-        dbResume.run(strQuery, [strFullName, strPhone, strEmail, strLinkedIn, strGitHub, strWebsite, strProfileID], function(err){
+        const strQuery = "UPDATE tblProfile SET strFullName = ?, strPhone = ?, strEmail = ?, strLinkedIn = ?, strGitHub = ?, strCity = ? WHERE strProfileID = ?"
+        dbResume.run(strQuery, [strFullName, strPhone, strEmail, strLinkedIn, strGitHub, strCity, strProfileID], function(err){
             if(err){
                 res.status(500).json({outcome: "error", message: err.message})
             } else {
@@ -792,6 +817,7 @@ app.post('/api/education', (req, res) => {
     let strFieldOfStudy = getTrimmedString(req.body.strFieldOfStudy)
     let strStartDate = getTrimmedString(req.body.strStartDate)
     let strEndDate = getTrimmedString(req.body.strEndDate)
+    let strLocation = getTrimmedString(req.body.strLocation)
 
     let blnError = false
     let strMessage = ''
@@ -807,8 +833,8 @@ app.post('/api/education', (req, res) => {
 
     if(blnError == false){
         const strEducationID = uuidv4()
-        const strQuery = "INSERT INTO tblEducation VALUES (?,?,?,?,?,?)"
-        dbResume.run(strQuery, [strEducationID, strInstitutionName, strDegree, strFieldOfStudy, strStartDate, strEndDate], function(err){
+        const strQuery = "INSERT INTO tblEducation VALUES (?,?,?,?,?,?,?)"
+        dbResume.run(strQuery, [strEducationID, strInstitutionName, strDegree, strFieldOfStudy, strStartDate, strEndDate, strLocation], function(err){
             if(err){
                 res.status(500).json({outcome: "error", message: err.message})
             } else {
@@ -830,6 +856,7 @@ app.put('/api/education', (req, res) => {
     let strFieldOfStudy = getTrimmedString(req.body.strFieldOfStudy)
     let strStartDate = getTrimmedString(req.body.strStartDate)
     let strEndDate = getTrimmedString(req.body.strEndDate)
+    let strLocation = getTrimmedString(req.body.strLocation)
 
     let blnError = false
     let strMessage = ''
@@ -848,8 +875,8 @@ app.put('/api/education', (req, res) => {
     }
 
     if(blnError == false){
-        const strQuery = "UPDATE tblEducation SET strInstitutionName = ?, strDegree = ?, strFieldOfStudy = ?, strStartDate = ?, strEndDate = ? WHERE strEducationID = ?"
-        dbResume.run(strQuery, [strInstitutionName, strDegree, strFieldOfStudy, strStartDate, strEndDate, strEducationID], function(err){
+        const strQuery = "UPDATE tblEducation SET strInstitutionName = ?, strDegree = ?, strFieldOfStudy = ?, strStartDate = ?, strEndDate = ?, strLocation = ? WHERE strEducationID = ?"
+        dbResume.run(strQuery, [strInstitutionName, strDegree, strFieldOfStudy, strStartDate, strEndDate, strLocation, strEducationID], function(err){
             if(err){
                 res.status(500).json({outcome: "error", message: err.message})
             } else {
