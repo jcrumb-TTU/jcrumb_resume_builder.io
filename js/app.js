@@ -18,6 +18,20 @@
 // Base URL for all fetch calls — must match HTTP_PORT in server.js
 const strBaseUrl = 'http://localhost:3000'
 
+// formatResumeDate converts a YYYY-MM-DD string to "Mon YYYY" (e.g. "Jan 2024").
+// Returns an empty string for falsy input, and "Present" if the caller passes
+// the sentinel string "Present" through unchanged.
+const formatResumeDate = (strRaw) => {
+    if(!strRaw || strRaw.length < 1){ return '' }
+    if(strRaw === 'Present'){ return 'Present' }
+    const arrMonths = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+    const arrParts = strRaw.split('-')
+    if(arrParts.length < 2){ return strRaw }
+    const intMonth = parseInt(arrParts[1], 10)
+    const strMonthLabel = arrMonths[intMonth - 1] || ''
+    return `${strMonthLabel} ${arrParts[0]}`
+}
+
 // Mutable state: tracks which record is currently being edited
 // in each section's form.  An empty string means "add mode".
 let strEditingJobID = ''
@@ -234,14 +248,14 @@ const renderDashboardProfile = (arrProfile) => {
     const strGitHub   = objP.strGitHub   && objP.strGitHub.length   > 0 ? `<div class="small">${objP.strGitHub}</div>` : ''
     const strEmail    = objP.strEmail    && objP.strEmail.length    > 0 ? `<div class="small">${objP.strEmail}</div>` : ''
     const strPhone    = objP.strPhone    && objP.strPhone.length    > 0 ? `<div class="small">${objP.strPhone}</div>` : ''
-    const strWebsite  = objP.strWebsite  && objP.strWebsite.length  > 0 ? `<div class="small">${objP.strWebsite}</div>` : ''
+    const strCity     = objP.strCity     && objP.strCity.length     > 0 ? `<div class="small">${objP.strCity}</div>` : ''
     elCard.innerHTML = `
         <div class="card-body p-4">
             <p class="fs-5 fw-bold text-center mb-2">${objP.strFullName}</p>
             <div class="row mb-1">
                 <div class="col-4 text-start">${strLinkedIn}${strGitHub}</div>
                 <div class="col-4 text-center">${strEmail}</div>
-                <div class="col-4 text-end">${strPhone}${strWebsite}</div>
+                <div class="col-4 text-end">${strPhone}${strCity}</div>
             </div>
             <hr class="my-1">
         </div>`
@@ -261,7 +275,7 @@ const renderDashboardEducation = (arrEdu) => {
     }
     let strEntries = ''
     arrEdu.forEach((objEdu) => {
-        const strEnd   = objEdu.strEndDate && objEdu.strEndDate.length > 0 ? objEdu.strEndDate : 'Present'
+        const strEnd   = objEdu.strEndDate && objEdu.strEndDate.length > 0 ? formatResumeDate(objEdu.strEndDate) : 'Present'
         const strField = objEdu.strFieldOfStudy && objEdu.strFieldOfStudy.length > 0 ? ` in ${objEdu.strFieldOfStudy}` : ''
         strEntries += `
             <div class="row mb-2">
@@ -293,8 +307,8 @@ const renderDashboardJobs = (arrJobs) => {
     }
     let strEntries = ''
     arrJobs.forEach((objJob) => {
-        const strEnd      = objJob.strEndDate && objJob.strEndDate.length > 0 ? objJob.strEndDate : 'Present'
-        const strRange    = `${objJob.strStartDate || ''} \u2013 ${strEnd}`
+        const strEnd      = objJob.strEndDate && objJob.strEndDate.length > 0 ? formatResumeDate(objJob.strEndDate) : 'Present'
+        const strRange    = `${formatResumeDate(objJob.strStartDate) || ''} \u2013 ${strEnd}`
         const arrResp     = objJob.arrResponsibilities || []
         const strRespHtml = arrResp.length > 0
             ? `<ul class="mb-0 ps-3">${arrResp.map((r) => `<li class="small">${r.strDescription}</li>`).join('')}</ul>`
@@ -350,7 +364,7 @@ const renderDashboardCertifications = (arrCerts) => {
     let strEntries = ''
     arrCerts.forEach((objCert) => {
         const strDate = objCert.strDateEarned && objCert.strDateEarned.length > 0
-            ? `<small class="text-muted fst-italic ms-2">${objCert.strDateEarned}</small>` : ''
+            ? `<small class="text-muted fst-italic ms-2">${formatResumeDate(objCert.strDateEarned)}</small>` : ''
         strEntries += `
             <div class="mb-1 small">
                 <span class="fw-bold">${objCert.strCertificationName}</span>
@@ -380,7 +394,7 @@ const renderDashboardAwards = (arrAwards) => {
     let strEntries = ''
     arrAwards.forEach((objAward) => {
         const strDate = objAward.strAwardDate && objAward.strAwardDate.length > 0
-            ? `<small class="text-muted fst-italic ms-2">${objAward.strAwardDate}</small>` : ''
+            ? `<small class="text-muted fst-italic ms-2">${formatResumeDate(objAward.strAwardDate)}</small>` : ''
         const strDesc = objAward.strDescription && objAward.strDescription.length > 0
             ? `<div class="small text-muted">${objAward.strDescription}</div>` : ''
         strEntries += `
@@ -462,7 +476,7 @@ document.querySelector('#modalProfile').addEventListener('show.bs.modal', async 
             {label: 'Phone',      value: objP.strPhone},
             {label: 'LinkedIn',   value: objP.strLinkedIn},
             {label: 'GitHub',     value: objP.strGitHub},
-            {label: 'Website',    value: objP.strWebsite}
+            {label: 'City',       value: objP.strCity}
         ].filter((objRow) => objRow.value && objRow.value.length > 0)
 
         elContent.innerHTML = arrRows.map((objRow) =>
@@ -537,6 +551,7 @@ document.querySelector('#divModalEducationContent').addEventListener('click', (o
             document.querySelector('#txtInstitutionName').value = objEdu.strInstitutionName
             document.querySelector('#txtDegree').value          = objEdu.strDegree
             document.querySelector('#txtFieldOfStudy').value    = objEdu.strFieldOfStudy || ''
+            document.querySelector('#txtEduLocation').value     = objEdu.strLocation || ''
             document.querySelector('#txtEduStartDate').value    = objEdu.strStartDate || ''
             const blnAttending = !objEdu.strEndDate || objEdu.strEndDate.length < 1
             document.querySelector('#chkCurrentlyAttending').checked  = blnAttending
@@ -606,9 +621,11 @@ document.querySelector('#divModalJobsContent').addEventListener('click', (objEve
         const objJob  = arrJobs.find((j) => j.strJobID === strJobID)
         if(objJob){
             strEditingJobID = objJob.strJobID
-            document.querySelector('#txtRoleName').value    = objJob.strRoleName
-            document.querySelector('#txtCompanyName').value = objJob.strCompanyName
-            document.querySelector('#txtStartDate').value   = objJob.strStartDate || ''
+            document.querySelector('#txtRoleName').value      = objJob.strRoleName
+            document.querySelector('#txtCompanyName').value  = objJob.strCompanyName
+            document.querySelector('#txtJobLocation').value  = objJob.strLocation || ''
+            document.querySelector('#txtJobDepartment').value = objJob.strDepartment || ''
+            document.querySelector('#txtStartDate').value    = objJob.strStartDate || ''
             const blnWorking = !objJob.strEndDate || objJob.strEndDate.length < 1
             document.querySelector('#chkCurrentlyWorking').checked = blnWorking
             document.querySelector('#txtEndDate').disabled         = blnWorking
@@ -836,7 +853,7 @@ const loadProfile = async () => {
             document.querySelector('#txtEmail').value = objProfile.strEmail || ''
             document.querySelector('#txtLinkedIn').value = objProfile.strLinkedIn || ''
             document.querySelector('#txtGitHub').value = objProfile.strGitHub || ''
-            document.querySelector('#txtWebsite').value = objProfile.strWebsite || ''
+            document.querySelector('#txtCity').value = objProfile.strCity || ''
         }
 
     } catch(objError) {
@@ -856,7 +873,7 @@ document.querySelector('#btnSaveProfile').addEventListener('click', async () => 
     const strEmail = document.querySelector('#txtEmail').value.trim()
     const strLinkedIn = document.querySelector('#txtLinkedIn').value.trim()
     const strGitHub = document.querySelector('#txtGitHub').value.trim()
-    const strWebsite = document.querySelector('#txtWebsite').value.trim()
+    const strCity = document.querySelector('#txtCity').value.trim()
 
     let blnError = false
     let strMessage = ''
@@ -888,9 +905,9 @@ document.querySelector('#btnSaveProfile').addEventListener('click', async () => 
                     strEmail,
                     strLinkedIn,
                     strGitHub,
-                    strWebsite
+                    strCity
                 }
-                : {strFullName, strPhone, strEmail, strLinkedIn, strGitHub, strWebsite}
+                : {strFullName, strPhone, strEmail, strLinkedIn, strGitHub, strCity}
 
             const strMethod = blnProfileExists ? 'PUT' : 'POST'
 
@@ -938,6 +955,7 @@ document.querySelector('#btnSaveProfile').addEventListener('click', async () => 
 const resetEducationForm = () => {
     document.querySelector('#txtInstitutionName').value = ''
     document.querySelector('#txtDegree').value = ''
+    document.querySelector('#txtEduLocation').value = ''
     document.querySelector('#txtFieldOfStudy').value = ''
     document.querySelector('#txtEduStartDate').value = ''
     document.querySelector('#txtEduEndDate').value = ''
@@ -1046,6 +1064,7 @@ document.querySelector('#btnSaveEducation').addEventListener('click', async () =
     const strDegree = document.querySelector('#txtDegree').value.trim()
     const strFieldOfStudy = document.querySelector('#txtFieldOfStudy').value.trim()
     const strEduStartDate = document.querySelector('#txtEduStartDate').value.trim()
+    const strEduLocation = document.querySelector('#txtEduLocation').value.trim()
 
     // Use empty string for end date when "currently attending" is checked
     const strEduEndDate = document.querySelector('#chkCurrentlyAttending').checked
@@ -1076,14 +1095,16 @@ document.querySelector('#btnSaveEducation').addEventListener('click', async () =
                     strDegree,
                     strFieldOfStudy,
                     strStartDate: strEduStartDate,
-                    strEndDate: strEduEndDate
+                    strEndDate: strEduEndDate,
+                    strLocation: strEduLocation
                 }
                 : {
                     strInstitutionName,
                     strDegree,
                     strFieldOfStudy,
                     strStartDate: strEduStartDate,
-                    strEndDate: strEduEndDate
+                    strEndDate: strEduEndDate,
+                    strLocation: strEduLocation
                 }
 
             const objResponse = await fetch(`${strBaseUrl}/api/education`, {
@@ -1236,6 +1257,8 @@ document.querySelector('#divEducationList').addEventListener('click', async (obj
 const resetJobForm = () => {
     document.querySelector('#txtRoleName').value = ''
     document.querySelector('#txtCompanyName').value = ''
+    document.querySelector('#txtJobLocation').value = ''
+    document.querySelector('#txtJobDepartment').value = ''
     document.querySelector('#txtStartDate').value = ''
     document.querySelector('#txtEndDate').value = ''
     document.querySelector('#txtEndDate').disabled = false
@@ -1433,6 +1456,8 @@ document.querySelector('#btnSaveJob').addEventListener('click', async () => {
     const strRoleName = document.querySelector('#txtRoleName').value.trim()
     const strCompanyName = document.querySelector('#txtCompanyName').value.trim()
     const strStartDate = document.querySelector('#txtStartDate').value.trim()
+    const strLocation = document.querySelector('#txtJobLocation').value.trim()
+    const strDepartment = document.querySelector('#txtJobDepartment').value.trim()
 
     // Use empty string for end date when "currently working here" is checked
     const strEndDate = document.querySelector('#chkCurrentlyWorking').checked
@@ -1452,8 +1477,8 @@ document.querySelector('#btnSaveJob').addEventListener('click', async () => {
             const strMethod = blnIsEditing ? 'PUT' : 'POST'
 
             const objPayload = blnIsEditing
-                ? {strJobID: strEditingJobID, strRoleName, strCompanyName, strStartDate, strEndDate}
-                : {strRoleName, strCompanyName, strStartDate, strEndDate}
+                ? {strJobID: strEditingJobID, strRoleName, strCompanyName, strStartDate, strEndDate, strLocation, strDepartment}
+                : {strRoleName, strCompanyName, strStartDate, strEndDate, strLocation, strDepartment}
 
             // Step 1: Create or update the job record
             const objJobResponse = await fetch(`${strBaseUrl}/api/jobs`, {
@@ -2144,15 +2169,13 @@ document.querySelector('#divCertificationsList').addEventListener('click', async
 // ============================================================
 
 // generateResumePDF
-// Fetches all resume data, builds a jsPDF document matching
-// the Crumb_Resume.pdf template, and triggers a browser
-// download. ALL fetch calls must use strBaseUrl — bare
-// relative paths will resolve against file:// and fail.
+// Fetches all resume data and builds a jsPDF document with a two-column
+// layout: left column 28% for dates/labels, right column 72% for content.
+// Role name is bold in the LEFT column; company name is bold in the RIGHT.
+// Location is italic right-aligned; department is italic below company.
+// ALL fetch calls use strBaseUrl — bare paths fail under file://.
 const generateResumePDF = async () => {
     try {
-        // Step 1: Fetch all resume data in parallel.
-        // strBaseUrl is REQUIRED on every fetch call here.
-        // Bare paths like '/api/profile' will fail under loadFile.
         const [objProfile, objEducation, objJobs, objSkills, objCerts, objAwards] = await Promise.all([
             fetch(`${strBaseUrl}/api/profile`),
             fetch(`${strBaseUrl}/api/education`),
@@ -2169,21 +2192,19 @@ const generateResumePDF = async () => {
         const arrCerts     = await objCerts.json()
         const arrAwards    = await objAwards.json()
 
-        // Step 2: Instantiate jsPDF
         const { jsPDF } = window.jspdf
         const objPDF = new jsPDF({orientation: 'portrait', unit: 'mm', format: 'a4'})
 
-        const intPageWidth   = 210
-        const intPageHeight  = 297
-        const intMargin      = 15
-        const intContentWidth  = intPageWidth - (intMargin * 2)
-        const intLeftColWidth  = intContentWidth * 0.25
-        const intRightColWidth = intContentWidth * 0.75
-        const intRightColX   = intMargin + intLeftColWidth
+        const intPageWidth    = 210
+        const intPageHeight   = 297
+        const intMargin       = 15
+        const intContentWidth = intPageWidth - (intMargin * 2)
+        const intLeftPct      = 0.28
+        const intLeftColW     = intContentWidth * intLeftPct
+        const intRightColW    = intContentWidth * (1 - intLeftPct)
+        const intRightColX    = intMargin + intLeftColW
         let intY = intMargin
 
-        // checkPageBreak adds a new page if the next block of
-        // content would overflow the bottom margin
         const checkPageBreak = (intNeeded) => {
             if(intY + intNeeded > intPageHeight - intMargin){
                 objPDF.addPage()
@@ -2191,7 +2212,7 @@ const generateResumePDF = async () => {
             }
         }
 
-        // Step 3: Profile header
+        // ── Header ──────────────────────────────────────────────────────────
         if(arrProfile.length > 0){
             const objP = arrProfile[0]
 
@@ -2203,18 +2224,18 @@ const generateResumePDF = async () => {
             objPDF.setFont('helvetica', 'normal')
             objPDF.setFontSize(9)
 
-            const strLeft   = [objP.strLinkedIn, objP.strGitHub].filter(Boolean).join('\n')
-            const strCenter = objP.strEmail || ''
-            const strRight  = [objP.strPhone, objP.strWebsite].filter(Boolean).join('\n')
-            const intContactLines = Math.max(
-                strLeft.split('\n').length,
-                strCenter.split('\n').length,
-                strRight.split('\n').length
-            )
+            const strLeftContact   = [objP.strLinkedIn, objP.strGitHub].filter(Boolean).join('\n')
+            const strCenterContact = objP.strEmail || ''
+            const strRightContact  = [objP.strPhone, objP.strCity].filter(Boolean).join('\n')
+            const intContactLines  = Math.max(
+                strLeftContact   ? strLeftContact.split('\n').length   : 0,
+                strCenterContact ? 1                                    : 0,
+                strRightContact  ? strRightContact.split('\n').length  : 0
+            ) || 1
 
-            if(strLeft)   objPDF.text(strLeft,   intMargin,                intY)
-            if(strCenter) objPDF.text(strCenter, intPageWidth / 2,         intY, {align: 'center'})
-            if(strRight)  objPDF.text(strRight,  intPageWidth - intMargin, intY, {align: 'right'})
+            if(strLeftContact)   objPDF.text(strLeftContact,   intMargin,                intY)
+            if(strCenterContact) objPDF.text(strCenterContact, intPageWidth / 2,         intY, {align: 'center'})
+            if(strRightContact)  objPDF.text(strRightContact,  intPageWidth - intMargin, intY, {align: 'right'})
             intY += (intContactLines * 4) + 3
 
             objPDF.setLineWidth(0.3)
@@ -2222,78 +2243,114 @@ const generateResumePDF = async () => {
             intY += 4
         }
 
-        // Step 4: Education section
+        // ── Education ────────────────────────────────────────────────────────
         if(arrEducation.length > 0){
-            let blnEduHeaderDrawn = false
+            let blnEduHeader = false
             arrEducation.forEach((objEdu) => {
-                checkPageBreak(20)
+                checkPageBreak(22)
 
-                if(!blnEduHeaderDrawn){
+                if(!blnEduHeader){
                     objPDF.setFont('helvetica', 'bold')
                     objPDF.setFontSize(10)
                     objPDF.text('Education', intMargin, intY)
-                    blnEduHeaderDrawn = true
+                    intY += 5
+                    blnEduHeader = true
                 }
 
-                const strEndDisplay = objEdu.strEndDate && objEdu.strEndDate.length > 0
-                    ? objEdu.strEndDate : 'Present'
+                const strEndDisplay  = objEdu.strEndDate && objEdu.strEndDate.length > 0
+                    ? formatResumeDate(objEdu.strEndDate) : 'Present'
+                const strStartDisplay = formatResumeDate(objEdu.strStartDate) || ''
+                const strDateRange   = strStartDisplay
+                    ? `${strStartDisplay} \u2013 ${strEndDisplay}`
+                    : strEndDisplay
 
+                // Left col: date range italic
                 objPDF.setFont('helvetica', 'italic')
                 objPDF.setFontSize(9)
-                objPDF.text(strEndDisplay, intMargin, intY + 5)
+                const arrDateLines = objPDF.splitTextToSize(strDateRange, intLeftColW - 3)
+                objPDF.text(arrDateLines, intMargin, intY)
 
+                // Right col: institution bold, degree normal, location italic right-aligned
                 objPDF.setFont('helvetica', 'bold')
-                objPDF.setFontSize(10)
+                objPDF.setFontSize(9)
                 objPDF.text(objEdu.strInstitutionName || '', intRightColX, intY)
+
+                if(objEdu.strLocation && objEdu.strLocation.length > 0){
+                    objPDF.setFont('helvetica', 'italic')
+                    objPDF.setFontSize(9)
+                    objPDF.text(objEdu.strLocation, intPageWidth - intMargin, intY, {align: 'right'})
+                }
 
                 objPDF.setFont('helvetica', 'normal')
                 objPDF.setFontSize(9)
-                const strDegreeText = [objEdu.strDegree, objEdu.strFieldOfStudy]
-                    .filter(Boolean).join(' in ')
-                objPDF.text(strDegreeText, intRightColX, intY + 5)
-                intY += 13
+                const strDegreeText = [objEdu.strDegree, objEdu.strFieldOfStudy].filter(Boolean).join(' in ')
+                objPDF.text(strDegreeText, intRightColX, intY + 4)
+
+                intY += 10
             })
             intY += 2
         }
 
-        // Step 5: Work Experience section
+        // ── Work Experience ──────────────────────────────────────────────────
         if(arrJobs.length > 0){
-            let blnJobHeaderDrawn = false
+            let blnJobHeader = false
             arrJobs.forEach((objJob) => {
-                checkPageBreak(25)
+                checkPageBreak(28)
 
-                const strEndDisplay = objJob.strEndDate && objJob.strEndDate.length > 0
-                    ? objJob.strEndDate : 'Present'
-
-                if(!blnJobHeaderDrawn){
+                if(!blnJobHeader){
                     objPDF.setFont('helvetica', 'bold')
                     objPDF.setFontSize(10)
                     objPDF.text('Work Experience', intMargin, intY)
-                    blnJobHeaderDrawn = true
+                    intY += 5
+                    blnJobHeader = true
                 }
 
-                objPDF.setFont('helvetica', 'italic')
-                objPDF.setFontSize(9)
-                objPDF.text(`${objJob.strStartDate} - ${strEndDisplay}`, intMargin, intY + 5)
+                const strEndDisplay   = objJob.strEndDate && objJob.strEndDate.length > 0
+                    ? formatResumeDate(objJob.strEndDate) : 'Present'
+                const strStartDisplay = formatResumeDate(objJob.strStartDate) || ''
+                const strDateRange    = strStartDisplay
+                    ? `${strStartDisplay} \u2013 ${strEndDisplay}`
+                    : strEndDisplay
 
+                // Left col: role name bold, date range italic below
                 objPDF.setFont('helvetica', 'bold')
-                objPDF.setFontSize(10)
-                objPDF.text(objJob.strRoleName || '', intRightColX, intY)
-
-                objPDF.setFont('helvetica', 'normal')
                 objPDF.setFontSize(9)
-                objPDF.text(objJob.strCompanyName || '', intRightColX, intY + 5)
-                intY += 11
+                const arrRoleLines = objPDF.splitTextToSize(objJob.strRoleName || '', intLeftColW - 3)
+                objPDF.text(arrRoleLines, intMargin, intY)
 
-                // Responsibilities as dash-prefixed bullet lines
+                objPDF.setFont('helvetica', 'italic')
+                objPDF.setFontSize(8)
+                objPDF.text(strDateRange, intMargin, intY + (arrRoleLines.length * 4))
+
+                // Right col: company bold, location italic right-aligned, department italic below
+                objPDF.setFont('helvetica', 'bold')
+                objPDF.setFontSize(9)
+                objPDF.text(objJob.strCompanyName || '', intRightColX, intY)
+
+                if(objJob.strLocation && objJob.strLocation.length > 0){
+                    objPDF.setFont('helvetica', 'italic')
+                    objPDF.setFontSize(9)
+                    objPDF.text(objJob.strLocation, intPageWidth - intMargin, intY, {align: 'right'})
+                }
+
+                if(objJob.strDepartment && objJob.strDepartment.length > 0){
+                    objPDF.setFont('helvetica', 'italic')
+                    objPDF.setFontSize(8)
+                    objPDF.text(objJob.strDepartment, intRightColX, intY + 4)
+                }
+
+                intY += 10
+
                 if(objJob.arrResponsibilities && objJob.arrResponsibilities.length > 0){
                     objJob.arrResponsibilities.forEach((objResp) => {
                         const arrLines = objPDF.splitTextToSize(
-                            `- ${objResp.strDescription}`,
-                            intRightColWidth - 5
+                            `\u2022 ${objResp.strDescription}`,
+                            intRightColW - 5
                         )
                         checkPageBreak(arrLines.length * 4 + 2)
-                        objPDF.text(arrLines, intRightColX + 3, intY)
+                        objPDF.setFont('helvetica', 'normal')
+                        objPDF.setFontSize(9)
+                        objPDF.text(arrLines, intRightColX + 2, intY)
                         intY += (arrLines.length * 4) + 1
                     })
                 }
@@ -2302,71 +2359,74 @@ const generateResumePDF = async () => {
             intY += 2
         }
 
-        // Step 6: Skills section
+        // ── Skills ───────────────────────────────────────────────────────────
         if(arrSkills.length > 0){
             checkPageBreak(15)
             objPDF.setFont('helvetica', 'bold')
             objPDF.setFontSize(10)
             objPDF.text('Skills', intMargin, intY)
+            intY += 5
 
             objPDF.setFont('helvetica', 'normal')
             objPDF.setFontSize(9)
-            const strSkillsLine = arrSkills.map(objSkill => objSkill.strSkillName).join(', ')
-            const arrSkillLines = objPDF.splitTextToSize(strSkillsLine, intRightColWidth)
+            const strSkillsLine = arrSkills.map((s) => s.strSkillName).join(', ')
+            const arrSkillLines = objPDF.splitTextToSize(strSkillsLine, intRightColW)
             objPDF.text(arrSkillLines, intRightColX, intY)
             intY += (arrSkillLines.length * 4) + 4
         }
 
-        // Step 7: Certifications section
+        // ── Certifications ───────────────────────────────────────────────────
         if(arrCerts.length > 0){
-            let blnCertHeaderDrawn = false
+            let blnCertHeader = false
             arrCerts.forEach((objCert) => {
-                checkPageBreak(12)
+                checkPageBreak(14)
 
-                if(!blnCertHeaderDrawn){
+                if(!blnCertHeader){
                     objPDF.setFont('helvetica', 'bold')
                     objPDF.setFontSize(10)
                     objPDF.text('Certifications', intMargin, intY)
-                    blnCertHeaderDrawn = true
+                    intY += 5
+                    blnCertHeader = true
                 }
 
                 if(objCert.strDateEarned && objCert.strDateEarned.length > 0){
                     objPDF.setFont('helvetica', 'italic')
                     objPDF.setFontSize(9)
-                    objPDF.text(objCert.strDateEarned, intMargin, intY + 5)
+                    objPDF.text(formatResumeDate(objCert.strDateEarned), intMargin, intY)
                 }
 
                 objPDF.setFont('helvetica', 'bold')
                 objPDF.setFontSize(9)
                 objPDF.text(objCert.strCertificationName || '', intRightColX, intY)
 
-                objPDF.setFont('helvetica', 'normal')
-                objPDF.setFontSize(9)
-                if(objCert.strIssuingOrganization){
-                    objPDF.text(objCert.strIssuingOrganization, intRightColX, intY + 5)
+                if(objCert.strIssuingOrganization && objCert.strIssuingOrganization.length > 0){
+                    objPDF.setFont('helvetica', 'normal')
+                    objPDF.setFontSize(9)
+                    objPDF.text(objCert.strIssuingOrganization, intRightColX, intY + 4)
                 }
-                intY += 11
+                intY += 10
             })
             intY += 2
         }
 
-        // Step 8: Awards section
+        // ── Awards ───────────────────────────────────────────────────────────
         if(arrAwards.length > 0){
-            let blnAwardHeaderDrawn = false
+            let blnAwardHeader = false
             arrAwards.forEach((objAward) => {
-                checkPageBreak(15)
+                checkPageBreak(16)
 
-                if(!blnAwardHeaderDrawn){
+                if(!blnAwardHeader){
                     objPDF.setFont('helvetica', 'bold')
                     objPDF.setFontSize(10)
                     objPDF.text('Awards', intMargin, intY)
-                    blnAwardHeaderDrawn = true
+                    intY += 5
+                    blnAwardHeader = true
                 }
 
                 if(objAward.strAwardDate && objAward.strAwardDate.length > 0){
                     objPDF.setFont('helvetica', 'italic')
                     objPDF.setFontSize(9)
-                    objPDF.text(objAward.strAwardDate, intMargin, intY + 5)
+                    objPDF.text(formatResumeDate(objAward.strAwardDate), intMargin, intY)
                 }
 
                 objPDF.setFont('helvetica', 'bold')
@@ -2376,13 +2436,10 @@ const generateResumePDF = async () => {
                 if(objAward.strDescription && objAward.strDescription.length > 0){
                     objPDF.setFont('helvetica', 'normal')
                     objPDF.setFontSize(9)
-                    const arrDescLines = objPDF.splitTextToSize(
-                        objAward.strDescription,
-                        intRightColWidth
-                    )
+                    const arrDescLines = objPDF.splitTextToSize(objAward.strDescription, intRightColW)
                     checkPageBreak(arrDescLines.length * 4 + 2)
-                    objPDF.text(arrDescLines, intRightColX, intY + 5)
-                    intY += (arrDescLines.length * 4) + 3
+                    objPDF.text(arrDescLines, intRightColX, intY + 4)
+                    intY += (arrDescLines.length * 4) + 6
                 } else {
                     intY += 8
                 }
@@ -2390,7 +2447,6 @@ const generateResumePDF = async () => {
             })
         }
 
-        // Step 9: Trigger download
         objPDF.save('resume.pdf')
 
     } catch(objError) {
