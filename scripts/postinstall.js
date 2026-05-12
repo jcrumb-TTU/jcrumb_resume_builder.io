@@ -47,11 +47,6 @@ copyFile(
     path.join(strRootDirectory, 'css', 'lib', 'all.min.css')
 )
 
-// Copy jsPDF UMD bundle to js/lib so it can be loaded locally (no CDN)
-copyFile(
-    path.join(strRootDirectory, 'node_modules', 'jspdf', 'dist', 'jspdf.umd.min.js'),
-    path.join(strRootDirectory, 'js', 'lib', 'jspdf.umd.min.js')
-)
 
 // FontAwesome requires its webfont files to be co-located relative to the CSS.
 // Read every file in the fontawesome webfonts directory and copy each one to
