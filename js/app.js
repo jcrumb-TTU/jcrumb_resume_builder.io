@@ -32,6 +32,23 @@ const formatResumeDate = (strRaw) => {
     return `${strMonthLabel} ${arrParts[0]}`
 }
 
+// ============================================================
+// escapeHTML
+// Escapes special HTML characters in user-supplied strings
+// before they are inserted into the resume HTML template.
+// Prevents malformed HTML if a user has entered characters
+// like < > & " ' in their resume content.
+// ============================================================
+const escapeHTML = (strInput) => {
+    if(!strInput || strInput.length < 1) return ''
+    return strInput
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+}
+
 // Mutable state: tracks which record is currently being edited
 // in each section's form.  An empty string means "add mode".
 let strEditingJobID = ''
@@ -2168,15 +2185,489 @@ document.querySelector('#divCertificationsList').addEventListener('click', async
 // SECTION: PDF Export
 // ============================================================
 
+// ============================================================
+// buildResumeHTML
+// Assembles all resume data into a complete HTML document
+// string with embedded CSS matching the Crumb_Resume.pdf
+// template layout. The HTML is passed to the Electron main
+// process which renders it using Chromium's PDF engine.
+//
+// Layout conventions matching the template:
+// - US Letter page with 0.5in top/bottom, 0.65in left/right
+// - Name centered bold 14pt
+// - Contact: two lines, left/center/right positioning
+// - Horizontal rule after contact
+// - Two-column body: left col 26% for labels/dates/roles,
+//   right col 74% for company/institution/content
+// - Section headers bold 10pt in left column
+// - Institution/company bold 10pt in right column
+// - Location italic right-aligned on same line as company
+// - Dates italic 9pt in left column
+// - Department italic 9pt in right column
+// - Bullets as disc list items 9pt indented in right column
+// - Education shows end date only per template convention
+// ============================================================
+const buildResumeHTML = (arrProfile, arrEducation, arrJobs,
+                         arrSkills, arrCerts, arrAwards) => {
+
+    const strCSS = `
+        @page {
+            size: letter;
+            margin: 0.5in 0.65in;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Calibri, Arial, sans-serif;
+            font-size: 10pt;
+            line-height: 1.15;
+            color: #000000;
+        }
+
+        .resume-name {
+            text-align: center;
+            font-size: 14pt;
+            font-weight: bold;
+            margin-bottom: 3pt;
+        }
+
+        .contact-line {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            font-size: 9pt;
+            margin-bottom: 1pt;
+        }
+
+        .contact-left  { flex: 1; text-align: left; }
+        .contact-center { flex: 1; text-align: center; }
+        .contact-right { flex: 1; text-align: right; }
+
+        .resume-rule {
+            border: none;
+            border-top: 0.75pt solid #000000;
+            margin: 3pt 0 4pt 0;
+        }
+
+        .section {
+            margin-bottom: 4pt;
+        }
+
+        .section-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 6pt;
+            margin-bottom: 1.5pt;
+        }
+
+        .col-left {
+            width: 26%;
+            flex-shrink: 0;
+        }
+
+        .col-right {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .section-label {
+            font-weight: bold;
+            font-size: 10pt;
+        }
+
+        .entry-role {
+            font-weight: bold;
+            font-size: 9pt;
+        }
+
+        .entry-date {
+            font-style: italic;
+            font-size: 9pt;
+        }
+
+        .company-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 4pt;
+        }
+
+        .company-name {
+            font-weight: bold;
+            font-size: 10pt;
+        }
+
+        .entry-location {
+            font-style: italic;
+            font-size: 9pt;
+            white-space: nowrap;
+        }
+
+        .entry-department {
+            font-style: italic;
+            font-size: 9pt;
+        }
+
+        .entry-degree {
+            font-size: 9pt;
+        }
+
+        .entry-bullets {
+            margin: 1pt 0 2pt 12pt;
+            padding: 0;
+            list-style-type: disc;
+        }
+
+        .entry-bullets li {
+            font-size: 9pt;
+            margin-bottom: 1pt;
+            line-height: 1.2;
+        }
+
+        .skills-text {
+            font-size: 9pt;
+        }
+
+        .cert-name {
+            font-weight: bold;
+            font-size: 9pt;
+        }
+
+        .cert-org {
+            font-size: 9pt;
+        }
+
+        .award-name {
+            font-weight: bold;
+            font-size: 9pt;
+        }
+
+        .award-desc {
+            font-size: 9pt;
+        }
+
+        .section-entry {
+            page-break-inside: avoid;
+        }
+    `
+
+    // ── Profile header ────────────────────────────────────────
+    let strProfileHTML = ''
+
+    if(arrProfile && arrProfile.length > 0){
+        const objP = arrProfile[0]
+
+        const strName     = escapeHTML(objP.strFullName || '')
+        const strLinkedIn = escapeHTML(
+            (objP.strLinkedIn || '').replace(/^(https?:\/\/)?(www\.)?/, '').trim()
+        )
+        const strGitHub   = escapeHTML(
+            (objP.strGitHub || '').replace(/^(https?:\/\/)?(www\.)?/, '').trim()
+        )
+        const strEmail    = escapeHTML(objP.strEmail  || '')
+        const strPhone    = escapeHTML(objP.strPhone  || '')
+        const strCity     = escapeHTML(objP.strCity   || '')
+
+        strProfileHTML = `
+            <div class="resume-name">${strName}</div>
+            <div class="contact-line">
+                <span class="contact-left">${strLinkedIn}</span>
+                <span class="contact-center"></span>
+                <span class="contact-right">${strPhone}</span>
+            </div>
+            <div class="contact-line">
+                <span class="contact-left">${strGitHub}</span>
+                <span class="contact-center">${strEmail}</span>
+                <span class="contact-right">${strCity}</span>
+            </div>
+            <hr class="resume-rule">
+        `
+    }
+
+    // ── Education ─────────────────────────────────────────────
+    let strEducationHTML = ''
+
+    if(arrEducation && arrEducation.length > 0){
+        let blnFirstEntry = true
+        let strEntries = ''
+
+        arrEducation.forEach((objEdu) => {
+            const strInstitution = escapeHTML(objEdu.strInstitutionName || '')
+            const strLocation    = escapeHTML(objEdu.strLocation || '')
+            const strDegreeText  = [
+                escapeHTML(objEdu.strDegree || ''),
+                escapeHTML(objEdu.strFieldOfStudy || '')
+            ].filter(Boolean).join(' in ')
+
+            const strDateDisplay = objEdu.strEndDate && objEdu.strEndDate.length > 0
+                ? escapeHTML(formatResumeDate(objEdu.strEndDate))
+                : 'Present'
+
+            strEntries += `
+                <div class="section-entry">
+                    <div class="section-row">
+                        <div class="col-left">
+                            ${blnFirstEntry
+                                ? '<span class="section-label">Education</span>'
+                                : ''}
+                        </div>
+                        <div class="col-right">
+                            <div class="company-row">
+                                <span class="company-name">${strInstitution}</span>
+                                ${strLocation
+                                    ? `<span class="entry-location">${strLocation}</span>`
+                                    : ''}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="section-row">
+                        <div class="col-left">
+                            <span class="entry-date">${strDateDisplay}</span>
+                        </div>
+                        <div class="col-right">
+                            <span class="entry-degree">${strDegreeText}</span>
+                        </div>
+                    </div>
+                </div>
+            `
+            blnFirstEntry = false
+        })
+
+        strEducationHTML = `<div class="section">${strEntries}</div>`
+    }
+
+    // ── Work Experience ───────────────────────────────────────
+    let strJobsHTML = ''
+
+    if(arrJobs && arrJobs.length > 0){
+        let strEntries = `
+            <div class="section-row">
+                <div class="col-left">
+                    <span class="section-label">Work Experience</span>
+                </div>
+                <div class="col-right"></div>
+            </div>
+        `
+
+        arrJobs.forEach((objJob) => {
+            const strRole       = escapeHTML(objJob.strRoleName || '')
+            const strCompany    = escapeHTML(objJob.strCompanyName || '')
+            const strLocation   = escapeHTML(objJob.strLocation || '')
+            const strDepartment = escapeHTML(objJob.strDepartment || '')
+
+            const strStartDisplay = escapeHTML(formatResumeDate(objJob.strStartDate || ''))
+            const strEndDisplay   = objJob.strEndDate && objJob.strEndDate.length > 0
+                ? escapeHTML(formatResumeDate(objJob.strEndDate))
+                : 'Present'
+            const strDateRange = `${strStartDisplay} &#8211; ${strEndDisplay}`
+
+            let strBullets = ''
+            if(objJob.arrResponsibilities && objJob.arrResponsibilities.length > 0){
+                const strItems = objJob.arrResponsibilities
+                    .map(objResp =>
+                        `<li>${escapeHTML(objResp.strDescription || '')}</li>`)
+                    .join('')
+                strBullets = `
+                    <div class="section-row">
+                        <div class="col-left"></div>
+                        <div class="col-right">
+                            <ul class="entry-bullets">${strItems}</ul>
+                        </div>
+                    </div>
+                `
+            }
+
+            strEntries += `
+                <div class="section-entry">
+                    <div class="section-row">
+                        <div class="col-left">
+                            <span class="entry-role">${strRole}</span>
+                        </div>
+                        <div class="col-right">
+                            <div class="company-row">
+                                <span class="company-name">${strCompany}</span>
+                                ${strLocation
+                                    ? `<span class="entry-location">${strLocation}</span>`
+                                    : ''}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="section-row">
+                        <div class="col-left">
+                            <span class="entry-date">${strDateRange}</span>
+                        </div>
+                        <div class="col-right">
+                            ${strDepartment
+                                ? `<span class="entry-department">${strDepartment}</span>`
+                                : ''}
+                        </div>
+                    </div>
+                    ${strBullets}
+                </div>
+            `
+        })
+
+        strJobsHTML = `<div class="section">${strEntries}</div>`
+    }
+
+    // ── Skills ────────────────────────────────────────────────
+    let strSkillsHTML = ''
+
+    if(arrSkills && arrSkills.length > 0){
+        const strSkillsList = arrSkills
+            .map(objSkill => escapeHTML(objSkill.strSkillName || ''))
+            .filter(Boolean)
+            .join(', ')
+
+        strSkillsHTML = `
+            <div class="section">
+                <div class="section-row">
+                    <div class="col-left">
+                        <span class="section-label">Skills</span>
+                    </div>
+                    <div class="col-right">
+                        <span class="skills-text">${strSkillsList}</span>
+                    </div>
+                </div>
+            </div>
+        `
+    }
+
+    // ── Certifications ────────────────────────────────────────
+    let strCertsHTML = ''
+
+    if(arrCerts && arrCerts.length > 0){
+        let blnFirstEntry = true
+        let strEntries = ''
+
+        arrCerts.forEach((objCert) => {
+            const strCertName = escapeHTML(objCert.strCertificationName || '')
+            const strOrg      = escapeHTML(objCert.strIssuingOrganization || '')
+            const strDate     = objCert.strDateEarned && objCert.strDateEarned.length > 0
+                ? escapeHTML(formatResumeDate(objCert.strDateEarned))
+                : ''
+
+            strEntries += `
+                <div class="section-entry">
+                    <div class="section-row">
+                        <div class="col-left">
+                            ${blnFirstEntry
+                                ? '<span class="section-label">Certifications</span>'
+                                : ''}
+                        </div>
+                        <div class="col-right">
+                            <span class="cert-name">${strCertName}</span>
+                        </div>
+                    </div>
+                    <div class="section-row">
+                        <div class="col-left">
+                            ${strDate
+                                ? `<span class="entry-date">${strDate}</span>`
+                                : ''}
+                        </div>
+                        <div class="col-right">
+                            ${strOrg
+                                ? `<span class="cert-org">${strOrg}</span>`
+                                : ''}
+                        </div>
+                    </div>
+                </div>
+            `
+            blnFirstEntry = false
+        })
+
+        strCertsHTML = `<div class="section">${strEntries}</div>`
+    }
+
+    // ── Awards ────────────────────────────────────────────────
+    let strAwardsHTML = ''
+
+    if(arrAwards && arrAwards.length > 0){
+        let blnFirstEntry = true
+        let strEntries = ''
+
+        arrAwards.forEach((objAward) => {
+            const strAwardName = escapeHTML(objAward.strAwardName || '')
+            const strDesc      = escapeHTML(objAward.strDescription || '')
+            const strDate      = objAward.strAwardDate && objAward.strAwardDate.length > 0
+                ? escapeHTML(formatResumeDate(objAward.strAwardDate))
+                : ''
+
+            strEntries += `
+                <div class="section-entry">
+                    <div class="section-row">
+                        <div class="col-left">
+                            ${blnFirstEntry
+                                ? '<span class="section-label">Awards</span>'
+                                : ''}
+                        </div>
+                        <div class="col-right">
+                            <span class="award-name">${strAwardName}</span>
+                        </div>
+                    </div>
+                    ${strDate || strDesc ? `
+                    <div class="section-row">
+                        <div class="col-left">
+                            ${strDate
+                                ? `<span class="entry-date">${strDate}</span>`
+                                : ''}
+                        </div>
+                        <div class="col-right">
+                            ${strDesc
+                                ? `<span class="award-desc">${strDesc}</span>`
+                                : ''}
+                        </div>
+                    </div>` : ''}
+                </div>
+            `
+            blnFirstEntry = false
+        })
+
+        strAwardsHTML = `<div class="section">${strEntries}</div>`
+    }
+
+    // ── Assemble complete HTML document ───────────────────────
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume</title>
+    <style>${strCSS}</style>
+</head>
+<body>
+    ${strProfileHTML}
+    ${strEducationHTML}
+    ${strJobsHTML}
+    ${strSkillsHTML}
+    ${strCertsHTML}
+    ${strAwardsHTML}
+</body>
+</html>`
+}
+
+// ============================================================
 // generateResumePDF
-// Fetches all resume data and builds a jsPDF document with a two-column
-// layout: left column 28% for dates/labels, right column 72% for content.
-// Role name is bold in the LEFT column; company name is bold in the RIGHT.
-// Location is italic right-aligned; department is italic below company.
-// ALL fetch calls use strBaseUrl — bare paths fail under file://.
+// Fetches all resume data, assembles it as HTML via
+// buildResumeHTML, and passes the HTML to the Electron main
+// process via window.electronAPI.exportPDF. The main process
+// renders the HTML in a hidden BrowserWindow using Chromium's
+// print engine and presents a save dialog.
+//
+// All fetch calls use strBaseUrl — bare relative paths resolve
+// against file:// under loadFile and produce ERR_FILE_NOT_FOUND.
+// ============================================================
 const generateResumePDF = async () => {
     try {
-        const [objProfile, objEducation, objJobs, objSkills, objCerts, objAwards] = await Promise.all([
+        // Step 1: Fetch all resume data in parallel.
+        // strBaseUrl is required on every fetch call.
+        const [objProfileRes, objEduRes, objJobsRes,
+               objSkillsRes, objCertsRes, objAwardsRes] = await Promise.all([
             fetch(`${strBaseUrl}/api/profile`),
             fetch(`${strBaseUrl}/api/education`),
             fetch(`${strBaseUrl}/api/jobs`),
@@ -2185,278 +2676,51 @@ const generateResumePDF = async () => {
             fetch(`${strBaseUrl}/api/awards`)
         ])
 
-        const arrProfile   = await objProfile.json()
-        const arrEducation = await objEducation.json()
-        const arrJobs      = await objJobs.json()
-        const arrSkills    = await objSkills.json()
-        const arrCerts     = await objCerts.json()
-        const arrAwards    = await objAwards.json()
+        const arrProfile   = await objProfileRes.json()
+        const arrEducation = await objEduRes.json()
+        const arrJobs      = await objJobsRes.json()
+        const arrSkills    = await objSkillsRes.json()
+        const arrCerts     = await objCertsRes.json()
+        const arrAwards    = await objAwardsRes.json()
 
-        const { jsPDF } = window.jspdf
-        const objPDF = new jsPDF({orientation: 'portrait', unit: 'mm', format: 'a4'})
+        // Step 2: Assemble resume as complete HTML document string
+        const strResumeHTML = buildResumeHTML(
+            arrProfile, arrEducation, arrJobs,
+            arrSkills, arrCerts, arrAwards
+        )
 
-        const intPageWidth    = 210
-        const intPageHeight   = 297
-        const intMargin       = 15
-        const intContentWidth = intPageWidth - (intMargin * 2)
-        const intLeftPct      = 0.28
-        const intLeftColW     = intContentWidth * intLeftPct
-        const intRightColW    = intContentWidth * (1 - intLeftPct)
-        const intRightColX    = intMargin + intLeftColW
-        let intY = intMargin
+        // Step 3: Send to Electron main process for PDF rendering.
+        // window.electronAPI is exposed by preload.js via contextBridge.
+        // The main process creates a hidden BrowserWindow, renders the
+        // HTML with Chromium, generates the PDF, and shows a save dialog.
+        const objResult = await window.electronAPI.exportPDF(strResumeHTML)
 
-        const checkPageBreak = (intNeeded) => {
-            if(intY + intNeeded > intPageHeight - intMargin){
-                objPDF.addPage()
-                intY = intMargin
-            }
-        }
-
-        // ── Header ──────────────────────────────────────────────────────────
-        if(arrProfile.length > 0){
-            const objP = arrProfile[0]
-
-            objPDF.setFont('helvetica', 'bold')
-            objPDF.setFontSize(16)
-            objPDF.text(objP.strFullName || '', intPageWidth / 2, intY, {align: 'center'})
-            intY += 7
-
-            objPDF.setFont('helvetica', 'normal')
-            objPDF.setFontSize(9)
-
-            const strLeftContact   = [objP.strLinkedIn, objP.strGitHub].filter(Boolean).join('\n')
-            const strCenterContact = objP.strEmail || ''
-            const strRightContact  = [objP.strPhone, objP.strCity].filter(Boolean).join('\n')
-            const intContactLines  = Math.max(
-                strLeftContact   ? strLeftContact.split('\n').length   : 0,
-                strCenterContact ? 1                                    : 0,
-                strRightContact  ? strRightContact.split('\n').length  : 0
-            ) || 1
-
-            if(strLeftContact)   objPDF.text(strLeftContact,   intMargin,                intY)
-            if(strCenterContact) objPDF.text(strCenterContact, intPageWidth / 2,         intY, {align: 'center'})
-            if(strRightContact)  objPDF.text(strRightContact,  intPageWidth - intMargin, intY, {align: 'right'})
-            intY += (intContactLines * 4) + 3
-
-            objPDF.setLineWidth(0.3)
-            objPDF.line(intMargin, intY, intPageWidth - intMargin, intY)
-            intY += 4
-        }
-
-        // ── Education ────────────────────────────────────────────────────────
-        if(arrEducation.length > 0){
-            let blnEduHeader = false
-            arrEducation.forEach((objEdu) => {
-                checkPageBreak(22)
-
-                if(!blnEduHeader){
-                    objPDF.setFont('helvetica', 'bold')
-                    objPDF.setFontSize(10)
-                    objPDF.text('Education', intMargin, intY)
-                    intY += 5
-                    blnEduHeader = true
-                }
-
-                const strEndDisplay  = objEdu.strEndDate && objEdu.strEndDate.length > 0
-                    ? formatResumeDate(objEdu.strEndDate) : 'Present'
-                const strStartDisplay = formatResumeDate(objEdu.strStartDate) || ''
-                const strDateRange   = strStartDisplay
-                    ? `${strStartDisplay} \u2013 ${strEndDisplay}`
-                    : strEndDisplay
-
-                // Left col: date range italic
-                objPDF.setFont('helvetica', 'italic')
-                objPDF.setFontSize(9)
-                const arrDateLines = objPDF.splitTextToSize(strDateRange, intLeftColW - 3)
-                objPDF.text(arrDateLines, intMargin, intY)
-
-                // Right col: institution bold, degree normal, location italic right-aligned
-                objPDF.setFont('helvetica', 'bold')
-                objPDF.setFontSize(9)
-                objPDF.text(objEdu.strInstitutionName || '', intRightColX, intY)
-
-                if(objEdu.strLocation && objEdu.strLocation.length > 0){
-                    objPDF.setFont('helvetica', 'italic')
-                    objPDF.setFontSize(9)
-                    objPDF.text(objEdu.strLocation, intPageWidth - intMargin, intY, {align: 'right'})
-                }
-
-                objPDF.setFont('helvetica', 'normal')
-                objPDF.setFontSize(9)
-                const strDegreeText = [objEdu.strDegree, objEdu.strFieldOfStudy].filter(Boolean).join(' in ')
-                objPDF.text(strDegreeText, intRightColX, intY + 4)
-
-                intY += 10
+        if(objResult.blnSuccess){
+            Swal.fire({
+                title: "Resume Exported",
+                text: `Your resume has been saved to: ${objResult.strPath}`,
+                icon: "success"
             })
-            intY += 2
-        }
-
-        // ── Work Experience ──────────────────────────────────────────────────
-        if(arrJobs.length > 0){
-            let blnJobHeader = false
-            arrJobs.forEach((objJob) => {
-                checkPageBreak(28)
-
-                if(!blnJobHeader){
-                    objPDF.setFont('helvetica', 'bold')
-                    objPDF.setFontSize(10)
-                    objPDF.text('Work Experience', intMargin, intY)
-                    intY += 5
-                    blnJobHeader = true
-                }
-
-                const strEndDisplay   = objJob.strEndDate && objJob.strEndDate.length > 0
-                    ? formatResumeDate(objJob.strEndDate) : 'Present'
-                const strStartDisplay = formatResumeDate(objJob.strStartDate) || ''
-                const strDateRange    = strStartDisplay
-                    ? `${strStartDisplay} \u2013 ${strEndDisplay}`
-                    : strEndDisplay
-
-                // Left col: role name bold, date range italic below
-                objPDF.setFont('helvetica', 'bold')
-                objPDF.setFontSize(9)
-                const arrRoleLines = objPDF.splitTextToSize(objJob.strRoleName || '', intLeftColW - 3)
-                objPDF.text(arrRoleLines, intMargin, intY)
-
-                objPDF.setFont('helvetica', 'italic')
-                objPDF.setFontSize(8)
-                objPDF.text(strDateRange, intMargin, intY + (arrRoleLines.length * 4))
-
-                // Right col: company bold, location italic right-aligned, department italic below
-                objPDF.setFont('helvetica', 'bold')
-                objPDF.setFontSize(9)
-                objPDF.text(objJob.strCompanyName || '', intRightColX, intY)
-
-                if(objJob.strLocation && objJob.strLocation.length > 0){
-                    objPDF.setFont('helvetica', 'italic')
-                    objPDF.setFontSize(9)
-                    objPDF.text(objJob.strLocation, intPageWidth - intMargin, intY, {align: 'right'})
-                }
-
-                if(objJob.strDepartment && objJob.strDepartment.length > 0){
-                    objPDF.setFont('helvetica', 'italic')
-                    objPDF.setFontSize(8)
-                    objPDF.text(objJob.strDepartment, intRightColX, intY + 4)
-                }
-
-                intY += 10
-
-                if(objJob.arrResponsibilities && objJob.arrResponsibilities.length > 0){
-                    objJob.arrResponsibilities.forEach((objResp) => {
-                        const arrLines = objPDF.splitTextToSize(
-                            `\u2022 ${objResp.strDescription}`,
-                            intRightColW - 5
-                        )
-                        checkPageBreak(arrLines.length * 4 + 2)
-                        objPDF.setFont('helvetica', 'normal')
-                        objPDF.setFontSize(9)
-                        objPDF.text(arrLines, intRightColX + 2, intY)
-                        intY += (arrLines.length * 4) + 1
-                    })
-                }
-                intY += 3
-            })
-            intY += 2
-        }
-
-        // ── Skills ───────────────────────────────────────────────────────────
-        if(arrSkills.length > 0){
-            checkPageBreak(15)
-            objPDF.setFont('helvetica', 'bold')
-            objPDF.setFontSize(10)
-            objPDF.text('Skills', intMargin, intY)
-            intY += 5
-
-            objPDF.setFont('helvetica', 'normal')
-            objPDF.setFontSize(9)
-            const strSkillsLine = arrSkills.map((s) => s.strSkillName).join(', ')
-            const arrSkillLines = objPDF.splitTextToSize(strSkillsLine, intRightColW)
-            objPDF.text(arrSkillLines, intRightColX, intY)
-            intY += (arrSkillLines.length * 4) + 4
-        }
-
-        // ── Certifications ───────────────────────────────────────────────────
-        if(arrCerts.length > 0){
-            let blnCertHeader = false
-            arrCerts.forEach((objCert) => {
-                checkPageBreak(14)
-
-                if(!blnCertHeader){
-                    objPDF.setFont('helvetica', 'bold')
-                    objPDF.setFontSize(10)
-                    objPDF.text('Certifications', intMargin, intY)
-                    intY += 5
-                    blnCertHeader = true
-                }
-
-                if(objCert.strDateEarned && objCert.strDateEarned.length > 0){
-                    objPDF.setFont('helvetica', 'italic')
-                    objPDF.setFontSize(9)
-                    objPDF.text(formatResumeDate(objCert.strDateEarned), intMargin, intY)
-                }
-
-                objPDF.setFont('helvetica', 'bold')
-                objPDF.setFontSize(9)
-                objPDF.text(objCert.strCertificationName || '', intRightColX, intY)
-
-                if(objCert.strIssuingOrganization && objCert.strIssuingOrganization.length > 0){
-                    objPDF.setFont('helvetica', 'normal')
-                    objPDF.setFontSize(9)
-                    objPDF.text(objCert.strIssuingOrganization, intRightColX, intY + 4)
-                }
-                intY += 10
-            })
-            intY += 2
-        }
-
-        // ── Awards ───────────────────────────────────────────────────────────
-        if(arrAwards.length > 0){
-            let blnAwardHeader = false
-            arrAwards.forEach((objAward) => {
-                checkPageBreak(16)
-
-                if(!blnAwardHeader){
-                    objPDF.setFont('helvetica', 'bold')
-                    objPDF.setFontSize(10)
-                    objPDF.text('Awards', intMargin, intY)
-                    intY += 5
-                    blnAwardHeader = true
-                }
-
-                if(objAward.strAwardDate && objAward.strAwardDate.length > 0){
-                    objPDF.setFont('helvetica', 'italic')
-                    objPDF.setFontSize(9)
-                    objPDF.text(formatResumeDate(objAward.strAwardDate), intMargin, intY)
-                }
-
-                objPDF.setFont('helvetica', 'bold')
-                objPDF.setFontSize(9)
-                objPDF.text(objAward.strAwardName || '', intRightColX, intY)
-
-                if(objAward.strDescription && objAward.strDescription.length > 0){
-                    objPDF.setFont('helvetica', 'normal')
-                    objPDF.setFontSize(9)
-                    const arrDescLines = objPDF.splitTextToSize(objAward.strDescription, intRightColW)
-                    checkPageBreak(arrDescLines.length * 4 + 2)
-                    objPDF.text(arrDescLines, intRightColX, intY + 4)
-                    intY += (arrDescLines.length * 4) + 6
-                } else {
-                    intY += 8
-                }
-                intY += 3
+        } else if(objResult.strError){
+            // An actual error occurred in the main process
+            Swal.fire({
+                title: "Export Failed",
+                text: "Could not generate PDF. Please try again.",
+                icon: "error"
             })
         }
-
-        objPDF.save('resume.pdf')
+        // If blnSuccess false and no strError the user cancelled
+        // the save dialog — no feedback needed
 
     } catch(objError) {
         Swal.fire({
             title: "Export Failed",
-            text:  "Could not generate PDF. Please try again.",
-            icon:  "error"
+            text: "Could not generate PDF. Please try again.",
+            icon: "error"
         })
     }
 }
+
 
 // btnExportPDF — export the complete resume as a PDF document.
 // generateResumePDF fetches all six data sources independently so
