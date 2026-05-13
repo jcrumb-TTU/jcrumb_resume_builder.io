@@ -24,7 +24,9 @@ const strBaseUrl = 'http://localhost:3000'
 const formatResumeDate = (strRaw) => {
     if(!strRaw || strRaw.length < 1){ return '' }
     if(strRaw === 'Present'){ return 'Present' }
-    const arrMonths = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+    // Full month names match the template resume formatting convention
+    const arrMonths = ['January', 'February', 'March', 'April', 'May', 'June',
+                       'July', 'August', 'September', 'October', 'November', 'December']
     const arrParts = strRaw.split('-')
     if(arrParts.length < 2){ return strRaw }
     const intMonth = parseInt(arrParts[1], 10)
@@ -641,7 +643,7 @@ document.querySelector('#divModalJobsContent').addEventListener('click', (objEve
             document.querySelector('#txtRoleName').value      = objJob.strRoleName
             document.querySelector('#txtCompanyName').value  = objJob.strCompanyName
             document.querySelector('#txtJobLocation').value  = objJob.strLocation || ''
-            document.querySelector('#txtJobDepartment').value = objJob.strDepartment || ''
+            document.querySelector('#txtDepartment').value = objJob.strDepartment || ''
             document.querySelector('#txtStartDate').value    = objJob.strStartDate || ''
             const blnWorking = !objJob.strEndDate || objJob.strEndDate.length < 1
             document.querySelector('#chkCurrentlyWorking').checked = blnWorking
@@ -1039,6 +1041,7 @@ const loadEducation = async () => {
                             <div>
                                 <h3 class="h5 mb-1">${objEducation.strInstitutionName}</h3>
                                 <p class="mb-1">${objEducation.strDegree}${strFieldDisplay}</p>
+                                ${objEducation.strLocation && objEducation.strLocation.length > 0 ? `<p class="text-muted mb-1">${objEducation.strLocation}</p>` : ''}
                                 <p class="text-muted mb-0">${objEducation.strStartDate || ''} \u2013 ${strDisplayEnd}</p>
                             </div>
                             <div class="flex-shrink-0">
@@ -1237,6 +1240,7 @@ document.querySelector('#divEducationList').addEventListener('click', async (obj
                 document.querySelector('#txtDegree').value = objEducation.strDegree
                 document.querySelector('#txtFieldOfStudy').value = objEducation.strFieldOfStudy || ''
                 document.querySelector('#txtEduStartDate').value = objEducation.strStartDate || ''
+                document.querySelector('#txtEduLocation').value = objEducation.strLocation || ''
 
                 // If end date is absent, check the "currently attending" checkbox
                 // and disable the end date field — mirrors how the form behaves on input
@@ -1275,7 +1279,7 @@ const resetJobForm = () => {
     document.querySelector('#txtRoleName').value = ''
     document.querySelector('#txtCompanyName').value = ''
     document.querySelector('#txtJobLocation').value = ''
-    document.querySelector('#txtJobDepartment').value = ''
+    document.querySelector('#txtDepartment').value = ''
     document.querySelector('#txtStartDate').value = ''
     document.querySelector('#txtEndDate').value = ''
     document.querySelector('#txtEndDate').disabled = false
@@ -1418,7 +1422,8 @@ const loadJobs = async () => {
                         <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
                             <div>
                                 <h3 class="h5 mb-1">${objJob.strRoleName}</h3>
-                                <p class="mb-1">${objJob.strCompanyName}</p>
+                                <p class="mb-1">${objJob.strCompanyName}${objJob.strDepartment && objJob.strDepartment.length > 0 ? ` — ${objJob.strDepartment}` : ''}</p>
+                                ${objJob.strLocation && objJob.strLocation.length > 0 ? `<p class="text-muted mb-1">${objJob.strLocation}</p>` : ''}
                                 <p class="text-muted mb-0">
                                     ${objJob.strStartDate} \u2013 ${strEndDateDisplay}
                                 </p>
@@ -1474,7 +1479,7 @@ document.querySelector('#btnSaveJob').addEventListener('click', async () => {
     const strCompanyName = document.querySelector('#txtCompanyName').value.trim()
     const strStartDate = document.querySelector('#txtStartDate').value.trim()
     const strLocation = document.querySelector('#txtJobLocation').value.trim()
-    const strDepartment = document.querySelector('#txtJobDepartment').value.trim()
+    const strDepartment = document.querySelector('#txtDepartment').value.trim()
 
     // Use empty string for end date when "currently working here" is checked
     const strEndDate = document.querySelector('#chkCurrentlyWorking').checked
@@ -1638,6 +1643,8 @@ document.querySelector('#divJobsList').addEventListener('click', async (objEvent
                 document.querySelector('#txtRoleName').value = objJob.strRoleName
                 document.querySelector('#txtCompanyName').value = objJob.strCompanyName
                 document.querySelector('#txtStartDate').value = objJob.strStartDate
+                document.querySelector('#txtJobLocation').value = objJob.strLocation || ''
+                document.querySelector('#txtDepartment').value = objJob.strDepartment || ''
 
                 // If end date is absent, check the "currently working" checkbox
                 // and disable the end date field
@@ -2371,7 +2378,7 @@ const buildResumeHTML = (arrProfile, arrEducation, arrJobs,
         )
         const strEmail    = escapeHTML(objP.strEmail  || '')
         const strPhone    = escapeHTML(objP.strPhone  || '')
-        const strCity     = escapeHTML(objP.strCity   || '')
+        const strCity     = escapeHTML(objP.strCity || objP.strWebsite || '')
 
         strProfileHTML = `
             <div class="resume-name">${strName}</div>
