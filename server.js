@@ -108,21 +108,42 @@ const objDatabaseReadyPromise = new Promise((resolve, reject) => {
                 // Its callback resolves objDatabaseReadyPromise and unblocks
                 // server startup.  All tables above must be created first.
 
-                // ALTER TABLE guards: add new columns to existing databases
-                // without destroying data.  SQLite throws if a column already
-                // exists, so we silently ignore "duplicate column" errors only.
-                const arrAlterStatements = [
-                    "ALTER TABLE tblJobs ADD COLUMN strLocation TEXT",
-                    "ALTER TABLE tblJobs ADD COLUMN strDepartment TEXT",
-                    "ALTER TABLE tblEducation ADD COLUMN strLocation TEXT",
-                    "ALTER TABLE tblProfile ADD COLUMN strCity TEXT"
-                ]
-                arrAlterStatements.forEach(strAlter => {
-                    dbResume.run(strAlter, [], function(objAlterErr){
-                        if(objAlterErr && !objAlterErr.message.includes('duplicate column')){
-                            console.error('ALTER TABLE error:', objAlterErr.message)
-                        }
-                    })
+                // --------------------------------------------------------
+                // ALTER TABLE statements add new columns to existing tables.
+                // These run every startup but are safe because the error
+                // handler ignores 'duplicate column' errors exclusively.
+                // Any other error is logged so genuine failures are visible.
+                // --------------------------------------------------------
+                dbResume.run(`ALTER TABLE tblJobs ADD COLUMN strLocation TEXT`, [], function(objErr){
+                    if(objErr && !objErr.message.includes('duplicate column')){
+                        console.error('ALTER tblJobs strLocation:', objErr.message)
+                    }
+                })
+
+                dbResume.run(`ALTER TABLE tblJobs ADD COLUMN strDepartment TEXT`, [], function(objErr){
+                    if(objErr && !objErr.message.includes('duplicate column')){
+                        console.error('ALTER tblJobs strDepartment:', objErr.message)
+                    }
+                })
+
+                dbResume.run(`ALTER TABLE tblEducation ADD COLUMN strLocation TEXT`, [], function(objErr){
+                    if(objErr && !objErr.message.includes('duplicate column')){
+                        console.error('ALTER tblEducation strLocation:', objErr.message)
+                    }
+                })
+
+                dbResume.run(`ALTER TABLE tblProfile ADD COLUMN strCity TEXT`, [], function(objErr){
+                    if(objErr && !objErr.message.includes('duplicate column')){
+                        console.error('ALTER tblProfile strCity:', objErr.message)
+                    }
+                })
+
+                // Migrate existing strWebsite data into strCity for all profile
+                // records created before this column was added. Runs safely
+                // on every startup — WHERE strCity IS NULL ensures it only
+                // touches records that have not yet been migrated.
+                dbResume.run(`UPDATE tblProfile SET strCity = strWebsite WHERE strCity IS NULL AND strWebsite IS NOT NULL`, [], function(objErr){
+                    if(objErr){ console.error('Profile city migration:', objErr.message) }
                 })
 
                 dbResume.run(`CREATE TABLE IF NOT EXISTS tblEducation (
@@ -156,6 +177,8 @@ app.get('/api/jobs', (req, res) => {
             tblJobs.strCompanyName,
             tblJobs.strStartDate,
             tblJobs.strEndDate,
+            tblJobs.strLocation,
+            tblJobs.strDepartment,
             tblResponsibilities.strResponsibilityID,
             tblResponsibilities.strDescription
         FROM tblJobs
@@ -179,6 +202,8 @@ app.get('/api/jobs', (req, res) => {
                         strCompanyName: objRow.strCompanyName,
                         strStartDate: objRow.strStartDate,
                         strEndDate: objRow.strEndDate,
+                        strLocation: objRow.strLocation || '',
+                        strDepartment: objRow.strDepartment || '',
                         arrResponsibilities: []
                     }
                     arrJobs.push(objJobsMap[objRow.strJobID])
@@ -739,8 +764,10 @@ app.post('/api/profile', (req, res) => {
 
     if(blnError == false){
         const strProfileID = uuidv4()
-        const strQuery = "INSERT INTO tblProfile VALUES (?,?,?,?,?,?,?)"
-        dbResume.run(strQuery, [strProfileID, strFullName, strPhone, strEmail, strLinkedIn, strGitHub, strCity], function(err){
+        // Insert into both strCity and strWebsite so existing queries
+        // that read strWebsite continue to function during transition.
+        const strQuery = "INSERT INTO tblProfile (strProfileID, strFullName, strPhone, strEmail, strLinkedIn, strGitHub, strCity, strWebsite) VALUES (?,?,?,?,?,?,?,?)"
+        dbResume.run(strQuery, [strProfileID, strFullName, strPhone, strEmail, strLinkedIn, strGitHub, strCity, strCity], function(err){
             if(err){
                 res.status(500).json({outcome: "error", message: err.message})
             } else {
@@ -777,8 +804,8 @@ app.put('/api/profile', (req, res) => {
     }
 
     if(blnError == false){
-        const strQuery = "UPDATE tblProfile SET strFullName = ?, strPhone = ?, strEmail = ?, strLinkedIn = ?, strGitHub = ?, strCity = ? WHERE strProfileID = ?"
-        dbResume.run(strQuery, [strFullName, strPhone, strEmail, strLinkedIn, strGitHub, strCity, strProfileID], function(err){
+        const strQuery = "UPDATE tblProfile SET strFullName = ?, strPhone = ?, strEmail = ?, strLinkedIn = ?, strGitHub = ?, strCity = ?, strWebsite = ? WHERE strProfileID = ?"
+        dbResume.run(strQuery, [strFullName, strPhone, strEmail, strLinkedIn, strGitHub, strCity, strCity, strProfileID], function(err){
             if(err){
                 res.status(500).json({outcome: "error", message: err.message})
             } else {
