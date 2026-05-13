@@ -2220,7 +2220,7 @@ const buildResumeHTML = (arrProfile, arrEducation, arrJobs,
     const strCSS = `
         @page {
             size: letter;
-            margin: 0.5in 0.65in;
+            margin: 0.06in 0.25in;
         }
 
         * {
@@ -2231,14 +2231,14 @@ const buildResumeHTML = (arrProfile, arrEducation, arrJobs,
 
         body {
             font-family: Calibri, Arial, sans-serif;
-            font-size: 10pt;
+            font-size: 11pt;
             line-height: 1.15;
             color: #000000;
         }
 
         .resume-name {
             text-align: center;
-            font-size: 14pt;
+            font-size: 15pt;
             font-weight: bold;
             margin-bottom: 3pt;
         }
@@ -2247,7 +2247,7 @@ const buildResumeHTML = (arrProfile, arrEducation, arrJobs,
             display: flex;
             justify-content: space-between;
             align-items: baseline;
-            font-size: 9pt;
+            font-size: 10pt;
             margin-bottom: 1pt;
         }
 
@@ -2284,17 +2284,17 @@ const buildResumeHTML = (arrProfile, arrEducation, arrJobs,
 
         .section-label {
             font-weight: bold;
-            font-size: 10pt;
+            font-size: 11pt;
         }
 
         .entry-role {
             font-weight: bold;
-            font-size: 9pt;
+            font-size: 11pt;
         }
 
         .entry-date {
             font-style: italic;
-            font-size: 9pt;
+            font-size: 10pt;
         }
 
         .company-row {
@@ -2306,22 +2306,22 @@ const buildResumeHTML = (arrProfile, arrEducation, arrJobs,
 
         .company-name {
             font-weight: bold;
-            font-size: 10pt;
+            font-size: 11pt;
         }
 
         .entry-location {
             font-style: italic;
-            font-size: 9pt;
+            font-size: 10pt;
             white-space: nowrap;
         }
 
         .entry-department {
             font-style: italic;
-            font-size: 9pt;
+            font-size: 10pt;
         }
 
         .entry-degree {
-            font-size: 9pt;
+            font-size: 10pt;
         }
 
         .entry-bullets {
@@ -2331,31 +2331,31 @@ const buildResumeHTML = (arrProfile, arrEducation, arrJobs,
         }
 
         .entry-bullets li {
-            font-size: 9pt;
+            font-size: 10pt;
             margin-bottom: 1pt;
             line-height: 1.2;
         }
 
         .skills-text {
-            font-size: 9pt;
+            font-size: 10pt;
         }
 
         .cert-name {
             font-weight: bold;
-            font-size: 9pt;
+            font-size: 10pt;
         }
 
         .cert-org {
-            font-size: 9pt;
+            font-size: 10pt;
         }
 
         .award-name {
             font-weight: bold;
-            font-size: 9pt;
+            font-size: 10pt;
         }
 
         .award-desc {
-            font-size: 9pt;
+            font-size: 10pt;
         }
 
         .section-entry {
@@ -2403,6 +2403,16 @@ const buildResumeHTML = (arrProfile, arrEducation, arrJobs,
         let blnFirstEntry = true
         let strEntries = ''
 
+        // Standalone Education header row (mirrors Work Experience)
+        strEntries = `
+            <div class="section-row">
+                <div class="col-left">
+                    <span class="section-label">Education</span>
+                </div>
+                <div class="col-right"></div>
+            </div>
+        `
+
         arrEducation.forEach((objEdu) => {
             const strInstitution = escapeHTML(objEdu.strInstitutionName || '')
             const strLocation    = escapeHTML(objEdu.strLocation || '')
@@ -2418,11 +2428,7 @@ const buildResumeHTML = (arrProfile, arrEducation, arrJobs,
             strEntries += `
                 <div class="section-entry">
                     <div class="section-row">
-                        <div class="col-left">
-                            ${blnFirstEntry
-                                ? '<span class="section-label">Education</span>'
-                                : ''}
-                        </div>
+                        <div class="col-left"></div>
                         <div class="col-right">
                             <div class="company-row">
                                 <span class="company-name">${strInstitution}</span>
@@ -2442,7 +2448,6 @@ const buildResumeHTML = (arrProfile, arrEducation, arrJobs,
                     </div>
                 </div>
             `
-            blnFirstEntry = false
         })
 
         strEducationHTML = `<div class="section">${strEntries}</div>`
@@ -2537,6 +2542,10 @@ const buildResumeHTML = (arrProfile, arrEducation, arrJobs,
                     <div class="col-left">
                         <span class="section-label">Skills</span>
                     </div>
+                    <div class="col-right"></div>
+                </div>
+                <div class="section-row">
+                    <div class="col-left"></div>
                     <div class="col-right">
                         <span class="skills-text">${strSkillsList}</span>
                     </div>
@@ -2552,6 +2561,16 @@ const buildResumeHTML = (arrProfile, arrEducation, arrJobs,
         let blnFirstEntry = true
         let strEntries = ''
 
+        // Standalone Certifications header row
+        strEntries = `
+            <div class="section-row">
+                <div class="col-left">
+                    <span class="section-label">Certifications</span>
+                </div>
+                <div class="col-right"></div>
+            </div>
+        `
+
         arrCerts.forEach((objCert) => {
             const strCertName = escapeHTML(objCert.strCertificationName || '')
             const strOrg      = escapeHTML(objCert.strIssuingOrganization || '')
@@ -2562,13 +2581,11 @@ const buildResumeHTML = (arrProfile, arrEducation, arrJobs,
             strEntries += `
                 <div class="section-entry">
                     <div class="section-row">
-                        <div class="col-left">
-                            ${blnFirstEntry
-                                ? '<span class="section-label">Certifications</span>'
-                                : ''}
-                        </div>
+                        <div class="col-left"></div>
                         <div class="col-right">
-                            <span class="cert-name">${strCertName}</span>
+                            ${strOrg
+                                ? `<span class="cert-name">${strOrg}</span>`
+                                : ''}
                         </div>
                     </div>
                     <div class="section-row">
@@ -2578,14 +2595,11 @@ const buildResumeHTML = (arrProfile, arrEducation, arrJobs,
                                 : ''}
                         </div>
                         <div class="col-right">
-                            ${strOrg
-                                ? `<span class="cert-org">${strOrg}</span>`
-                                : ''}
+                            <span class="cert-org">${strCertName}</span>
                         </div>
                     </div>
                 </div>
             `
-            blnFirstEntry = false
         })
 
         strCertsHTML = `<div class="section">${strEntries}</div>`
@@ -2598,6 +2612,16 @@ const buildResumeHTML = (arrProfile, arrEducation, arrJobs,
         let blnFirstEntry = true
         let strEntries = ''
 
+        // Standalone Awards header row
+        strEntries = `
+            <div class="section-row">
+                <div class="col-left">
+                    <span class="section-label">Awards</span>
+                </div>
+                <div class="col-right"></div>
+            </div>
+        `
+
         arrAwards.forEach((objAward) => {
             const strAwardName = escapeHTML(objAward.strAwardName || '')
             const strDesc      = escapeHTML(objAward.strDescription || '')
@@ -2608,11 +2632,7 @@ const buildResumeHTML = (arrProfile, arrEducation, arrJobs,
             strEntries += `
                 <div class="section-entry">
                     <div class="section-row">
-                        <div class="col-left">
-                            ${blnFirstEntry
-                                ? '<span class="section-label">Awards</span>'
-                                : ''}
-                        </div>
+                        <div class="col-left"></div>
                         <div class="col-right">
                             <span class="award-name">${strAwardName}</span>
                         </div>
@@ -2632,7 +2652,6 @@ const buildResumeHTML = (arrProfile, arrEducation, arrJobs,
                     </div>` : ''}
                 </div>
             `
-            blnFirstEntry = false
         })
 
         strAwardsHTML = `<div class="section">${strEntries}</div>`
